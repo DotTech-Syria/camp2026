@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة الإدارة | مخيم مار ميخائيل</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+    
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+    <div class="watercolor-bg admin-bg"></div>
+    <div class="glass-overlay"></div>
+
+    <!-- Admin Login -->
+    <section id="admin-login-section" class="glass-card login-card active">
+        <div class="logo-container">
+            <span class="material-symbols-rounded logo-icon">admin_panel_settings</span>
+            <h1>إدارة المخيم</h1>
+            <p>تسجيل الدخول للإداريين فقط</p>
+        </div>
+        
+        <div class="login-actions">
+            <button id="admin-google-login-btn" class="btn btn-primary btn-large">
+                تسجيل الدخول بصلاحيات الإدارة
+            </button>
+        </div>
+    </section>
+
+    <!-- Admin Dashboard -->
+    <div id="admin-dashboard" class="admin-layout hidden">
+        <!-- Sidebar Navigation -->
+        <aside class="admin-sidebar glass-panel">
+            <div class="sidebar-header">
+                <span class="material-symbols-rounded">admin_panel_settings</span>
+                <h2>مركز القيادة</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-target="admin-teams">
+                    <span class="material-symbols-rounded">groups</span> إدارة الفرق
+                </button>
+                <button class="nav-item" data-target="admin-tasks">
+                    <span class="material-symbols-rounded">assignment</span> المهام والعلامات
+                </button>
+                <button class="nav-item" data-target="admin-schedule">
+                    <span class="material-symbols-rounded">event</span> البرنامج اليومي
+                </button>
+                <button class="nav-item" data-target="admin-points">
+                    <span class="material-symbols-rounded">military_tech</span> سجل النقاط
+                </button>
+                <button class="nav-item" data-target="admin-settings">
+                    <span class="material-symbols-rounded">settings</span> الإعدادات
+                </button>
+                <button class="nav-item" data-target="admin-chat">
+                    <span class="material-symbols-rounded">forum</span> مراقبة المحادثات
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="admin-logout-btn" class="btn btn-secondary w-100">تسجيل الخروج</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="admin-content">
+            <!-- Teams Section -->
+            <section id="admin-teams" class="admin-section active glass-card">
+                <div class="section-header">
+                    <h2>إدارة الفرق والأعضاء</h2>
+                    <button class="btn btn-primary" id="btn-add-team">
+                        <span class="material-symbols-rounded">add</span> إضافة فرقة
+                    </button>
+                </div>
+                
+                <div class="teams-grid" id="admin-teams-list">
+                    <!-- Teams will be listed here -->
+                </div>
+
+                <div class="members-management mt-4" style="display: flex; gap: 24px; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 250px;">
+                        <h3>الأعضاء غير الموزعين</h3>
+                        <div id="unassigned-members-list" class="members-list drop-zone" data-team-id="null" data-role="member">
+                            <!-- Members -->
+                        </div>
+                    </div>
+                    <div style="flex: 1; min-width: 250px;">
+                        <h3 style="color: var(--md-sys-color-primary);">فريق الإدارة</h3>
+                        <div id="admin-members-list" class="members-list drop-zone" data-team-id="null" data-role="admin">
+                            <!-- Admins -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tasks Section -->
+            <section id="admin-tasks" class="admin-section hidden glass-card">
+                <div class="section-header">
+                    <h2>المهام اليومية</h2>
+                    <button class="btn btn-primary" id="btn-add-task">
+                        <span class="material-symbols-rounded">add</span> إضافة مهمة
+                    </button>
+                </div>
+
+                <div class="schedule-controls" style="display: flex; gap: 16px; margin-bottom: 24px; align-items: center; flex-wrap: wrap;">
+                    <select id="tasks-day-select" class="input-group" style="margin-bottom: 0; padding: 12px 16px; background: rgba(255,255,255,0.9); font-family: var(--font-primary); font-weight: bold; border-radius: 12px; cursor: pointer;">
+                        <option value="اليوم الأول">اليوم الأول</option>
+                        <option value="اليوم الثاني">اليوم الثاني</option>
+                        <option value="اليوم الثالث">اليوم الثالث</option>
+                        <option value="اليوم الرابع">اليوم الرابع</option>
+                        <option value="اليوم الخامس">اليوم الخامس</option>
+                    </select>
+                </div>
+
+                <!-- Teams Pool for Dragging -->
+                <div style="margin-bottom: 24px; padding: 16px; background: rgba(255,255,255,0.5); border-radius: 16px;">
+                    <h3 style="font-size: 1rem; margin-bottom: 12px; color: var(--md-sys-color-secondary);">اسحب الفرقة وأفلتها فوق المهمة لتعيينها:</h3>
+                    <div id="tasks-teams-pool" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <!-- Team chips will be injected here -->
+                    </div>
+                </div>
+
+                <div id="admin-tasks-list" class="admin-schedule-list tasks-drop-zone">
+                    <!-- Tasks Editor -->
+                </div>
+            </section>
+
+            <!-- Points Board Section -->
+            <section id="admin-points" class="admin-section hidden glass-card">
+                <div class="section-header">
+                    <h2>سجل النقاط الإضافية</h2>
+                </div>
+                
+                <div style="display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap;">
+                    <select id="point-team-select" class="input-group" style="flex: 1; padding: 12px; border-radius: 12px;">
+                        <option value="">-- اختر الفرقة --</option>
+                    </select>
+                    <input type="number" id="point-amount" class="input-group" placeholder="عدد النقاط (مثال: 5 أو -2)" style="flex: 1; padding: 12px; border-radius: 12px;">
+                    <input type="text" id="point-reason" class="input-group" placeholder="السبب (مثال: الفوز بالتحدي)" style="flex: 2; padding: 12px; border-radius: 12px;">
+                    <button class="btn btn-primary" id="btn-add-points">إضافة النقاط</button>
+                </div>
+
+                <div class="tasks-table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>التاريخ</th>
+                                <th>الفرقة</th>
+                                <th>النقاط</th>
+                                <th>السبب</th>
+                                <th>إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-points-tbody">
+                            <!-- Points rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Schedule Section -->
+            <section id="admin-schedule" class="admin-section hidden glass-card">
+                <div class="section-header">
+                    <h2>البرنامج اليومي</h2>
+                    <button class="btn btn-primary" id="btn-add-schedule">
+                        <span class="material-symbols-rounded">add</span> نشاط جديد
+                    </button>
+                </div>
+                
+                <div class="schedule-controls" style="display: flex; gap: 16px; margin-bottom: 24px; align-items: center; flex-wrap: wrap;">
+                    <select id="schedule-day-select" class="input-group" style="margin-bottom: 0; padding: 12px 16px; background: rgba(255,255,255,0.9); font-family: var(--font-primary); font-weight: bold; border-radius: 12px; cursor: pointer;">
+                        <option value="اليوم الأول">اليوم الأول</option>
+                        <option value="اليوم الثاني">اليوم الثاني</option>
+                        <option value="اليوم الثالث">اليوم الثالث</option>
+                        <option value="اليوم الرابع">اليوم الرابع</option>
+                        <option value="اليوم الخامس">اليوم الخامس</option>
+                    </select>
+                    <button class="btn btn-secondary" id="btn-set-active-day">
+                        <span class="material-symbols-rounded">visibility</span> تعيين كاليوم النشط للأعضاء
+                    </button>
+                    <div id="active-day-badge" class="badge" style="background: var(--md-sys-color-primary); color: white;">اليوم النشط: جاري التحميل...</div>
+                </div>
+
+                <div id="admin-schedule-list" class="admin-schedule-list schedule-drop-zone">
+                    <!-- Schedule Editor -->
+                </div>
+            </section>
+
+             <!-- Settings Section -->
+             <section id="admin-settings" class="admin-section hidden glass-card">
+                <div class="section-header">
+                    <h2>إعدادات النظام</h2>
+                </div>
+                <div class="settings-form">
+                    <!-- Configure Firebase, Drive API, etc. internally if needed, or clear data -->
+                    <button class="btn btn-danger" id="btn-reset-leaderboard">تصفير العلامات</button>
+                </div>
+            </section>
+
+            <!-- Chat Monitoring Section -->
+            <section id="admin-chat" class="admin-section hidden glass-card" style="display: flex; flex-direction: column; height: 80vh;">
+                <div class="section-header">
+                    <h2>مراقبة المحادثات</h2>
+                </div>
+                
+                <div style="margin-bottom: 16px;">
+                    <select id="admin-chat-room-select" class="input-group" style="padding: 12px; border-radius: 12px; font-family: var(--font-primary);">
+                        <option value="global">المحادثة العامة</option>
+                        <option value="admin_chat">محادثة الإداريين</option>
+                        <!-- Teams will be injected here -->
+                    </select>
+                </div>
+
+                <div id="admin-chat-messages" class="chat-messages-container" style="flex: 1; overflow-y: auto; padding: 16px; background: rgba(255,255,255,0.4); border-radius: 12px; display: flex; flex-direction: column; gap: 12px;">
+                    <!-- Messages will be injected here -->
+                </div>
+                
+                <!-- Admin Chat Input (Optional) -->
+                <form id="admin-chat-form" style="display: flex; gap: 8px; margin-top: 16px;">
+                    <input type="text" id="admin-chat-input" placeholder="اكتب رسالة كإدارة..." style="flex: 1; padding: 12px 16px; border-radius: 24px; border: 1px solid var(--glass-border); font-family: var(--font-primary);">
+                    <button type="submit" class="btn btn-icon btn-primary" style="border-radius: 50%;">
+                        <span class="material-symbols-rounded">send</span>
+                    </button>
+                </form>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals will be dynamically added or pre-defined here -->
+
+    <!-- Scripts -->
+    <script type="module" src="js/firebase-config.js"></script>
+    <script type="module" src="js/auth.js"></script>
+    <script type="module" src="js/admin.js"></script>
+</body>
+</html>

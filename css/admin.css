@@ -1,0 +1,298 @@
+/* Admin specific styles overriding/adding to style.css */
+
+.admin-layout {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.admin-bg {
+    background: 
+        radial-gradient(circle at 80% 20%, rgba(205, 229, 255, 0.4), transparent 50%),
+        radial-gradient(circle at 20% 80%, rgba(255, 204, 204, 0.3), transparent 50%); /* Slightly different hue for admin */
+}
+
+/* Sidebar */
+.admin-sidebar {
+    width: 280px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    border-right: none;
+    border-left: 1px solid var(--glass-border); /* RTL Support */
+}
+
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 40px;
+    color: var(--md-sys-color-primary);
+}
+
+.sidebar-header h2 {
+    margin-bottom: 0;
+    font-size: 1.5rem;
+}
+
+.sidebar-nav {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sidebar-nav .nav-item {
+    display: flex;
+    align-items: center;
+    flex-direction: row; /* override bottom nav */
+    justify-content: flex-start;
+    gap: 16px;
+    padding: 16px;
+    font-size: 1rem;
+    width: 100%;
+    border-radius: 16px;
+}
+
+.sidebar-nav .nav-item span.material-symbols-rounded {
+    margin-bottom: 0;
+    background: transparent !important; /* override active style from bottom nav */
+    padding: 0;
+}
+
+.sidebar-nav .nav-item.active {
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+}
+
+/* Admin Content Area */
+.admin-content {
+    flex: 1;
+    padding: 32px;
+    overflow-y: auto;
+}
+
+.admin-section {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+/* Data Tables */
+.tasks-table-container {
+    overflow-x: auto;
+    background: rgba(255,255,255,0.7);
+    border-radius: 16px;
+    border: 1px solid var(--glass-border);
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: right;
+}
+
+.data-table th, .data-table td {
+    padding: 16px;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.data-table th {
+    background: rgba(255,255,255,0.5);
+    font-weight: 700;
+    color: var(--md-sys-color-secondary);
+}
+
+.data-table tbody tr:hover {
+    background: rgba(255,255,255,0.9);
+}
+
+/* Grids */
+.teams-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 24px;
+}
+
+.team-card {
+    background: rgba(255,255,255,0.8);
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid var(--glass-border);
+}
+
+.team-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--glass-border);
+    padding-bottom: 8px;
+}
+
+.members-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.member-chip {
+    background: var(--md-sys-color-secondary-container);
+    color: var(--md-sys-color-on-secondary-container);
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.mt-4 {
+    margin-top: 32px;
+}
+
+.w-100 {
+    width: 100%;
+}
+
+@media (max-width: 768px) {
+    .admin-layout {
+        flex-direction: column;
+    }
+    .admin-sidebar {
+        width: 100%;
+        height: auto;
+        border-left: none;
+        border-bottom: 1px solid var(--glass-border);
+        padding: 16px;
+    }
+    .sidebar-header {
+        margin-bottom: 16px;
+    }
+    .sidebar-nav {
+        flex-direction: row;
+        overflow-x: auto;
+    }
+    .sidebar-nav .nav-item {
+        white-space: nowrap;
+    }
+}
+
+/* Drag and Drop Styles */
+.drop-zone {
+    min-height: 80px;
+    background: rgba(255, 255, 255, 0.4);
+    border: 2px dashed var(--glass-border);
+    border-radius: 16px;
+    padding: 16px;
+    transition: all 0.2s;
+}
+
+.drop-zone.drag-over {
+    background: rgba(116, 248, 229, 0.3); /* Primary container with opacity */
+    border-color: var(--md-sys-color-primary);
+}
+
+.member-chip {
+    cursor: grab;
+    user-select: none;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.member-chip:active {
+    cursor: grabbing;
+}
+
+.member-chip.dragging {
+    opacity: 0.5;
+    transform: scale(1.05);
+    box-shadow: var(--glass-shadow);
+}
+
+/* Schedule Editing Styles */
+.schedule-drop-zone {
+    min-height: 200px;
+    padding-bottom: 50px;
+}
+
+.schedule-item.draggable {
+    cursor: grab;
+    transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+    user-select: none;
+    border: 2px solid transparent;
+}
+
+.schedule-item.draggable:active {
+    cursor: grabbing;
+}
+
+.schedule-item.dragging {
+    opacity: 0.5;
+    box-shadow: var(--glass-shadow);
+    background: white;
+}
+
+.schedule-item.drag-over-top {
+    border-top: 4px solid var(--md-sys-color-primary);
+}
+
+.schedule-item.drag-over-bottom {
+    border-bottom: 4px solid var(--md-sys-color-primary);
+}
+
+.schedule-edit-input {
+    border: 1px solid var(--md-sys-color-primary);
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-family: var(--font-primary);
+    font-size: 1rem;
+    background: white;
+}
+
+.schedule-edit-input.time-input {
+    width: 80px;
+    text-align: center;
+}
+
+/* Tasks & Teams Dragging */
+.team-pill {
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+    padding: 6px 16px;
+    border-radius: 100px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: grab;
+    user-select: none;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid var(--md-sys-color-primary);
+}
+
+.team-pill:active {
+    cursor: grabbing;
+}
+
+.team-pill.dragging {
+    opacity: 0.5;
+    transform: scale(1.05);
+}
+
+.task-item-container {
+    position: relative;
+    padding: 8px;
+    border-radius: 12px;
+    transition: background 0.2s;
+    border: 2px dashed transparent;
+}
+
+.task-item-container.drag-over {
+    background: rgba(116, 248, 229, 0.4);
+    border: 2px dashed var(--md-sys-color-primary);
+}
