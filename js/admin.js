@@ -9,7 +9,7 @@ navItems.forEach(item => {
     item.addEventListener('click', () => {
         navItems.forEach(nav => nav.classList.remove('active'));
         adminSections.forEach(section => section.classList.add('hidden'));
-        
+
         item.classList.add('active');
         const targetId = item.getAttribute('data-target');
         document.getElementById(targetId).classList.remove('hidden');
@@ -26,7 +26,7 @@ function initAdmin() {
     listenToTasks();
     listenToSchedule();
     listenToPoints();
-    listenToAdminChat();
+    // listenToAdminChat(); // Disabled to reduce database reads
 }
 
 // ==============================
@@ -58,7 +58,7 @@ function listenToTeams() {
         snapshot.forEach((docSnap) => {
             const data = docSnap.data();
             teamsCache[docSnap.id] = data;
-            
+
             const card = document.createElement('div');
             card.className = 'team-card';
             card.innerHTML = `
@@ -78,12 +78,12 @@ function listenToTeams() {
         // Add delete listeners
         document.querySelectorAll('.btn-delete-team').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                if(confirm("هل أنت متأكد من حذف هذه الفرقة؟")) {
+                if (confirm("هل أنت متأكد من حذف هذه الفرقة؟")) {
                     await deleteDoc(doc(db, "teams", e.currentTarget.getAttribute('data-id')));
                 }
             });
         });
-        
+
         // Re-render users if cache updated
         renderUsers();
         // Re-render task teams pool
@@ -109,14 +109,14 @@ function listenToUsers() {
 function renderUsers() {
     const unassignedList = document.getElementById('unassigned-members-list');
     const adminList = document.getElementById('admin-members-list');
-    
+
     unassignedList.innerHTML = '';
     if (adminList) adminList.innerHTML = '';
-    
+
     // Clear team containers
     Object.keys(teamsCache).forEach(teamId => {
         const container = document.getElementById(`team-members-${teamId}`);
-        if(container) container.innerHTML = '';
+        if (container) container.innerHTML = '';
     });
 
     usersCache.forEach(user => {
@@ -149,7 +149,7 @@ function renderUsers() {
 
 function setupDropZones() {
     const dropZones = document.querySelectorAll('.drop-zone');
-    
+
     dropZones.forEach(zone => {
         // Remove old listeners to avoid duplicates if called multiple times
         zone.replaceWith(zone.cloneNode(true));
@@ -169,7 +169,7 @@ function setupDropZones() {
         zone.addEventListener('drop', async (e) => {
             e.preventDefault();
             zone.classList.remove('drag-over');
-            
+
             const draggingChip = document.querySelector('.dragging');
             if (!draggingChip) return;
 
@@ -182,7 +182,7 @@ function setupDropZones() {
 
             // Update Firestore
             try {
-                await updateDoc(doc(db, "users", userId), { 
+                await updateDoc(doc(db, "users", userId), {
                     teamId: newTeamId,
                     role: newRole
                 });
@@ -202,7 +202,7 @@ let tasksUnsubscribe = null;
 document.getElementById('btn-add-task').addEventListener('click', async () => {
     const title = prompt("أدخل اسم المهمة (مثال: جلي الغداء):");
     if (!title) return;
-    
+
     const day = tasksDaySelect.value;
     const nextOrder = tasksCache.length;
 
@@ -228,7 +228,7 @@ tasksDaySelect.addEventListener('change', () => {
 function updateTasksTeamsPool() {
     const pool = document.getElementById('tasks-teams-pool');
     if (!pool) return;
-    
+
     // Also update points board select
     const pointSelect = document.getElementById('point-team-select');
     if (pointSelect) {
@@ -243,14 +243,14 @@ function updateTasksTeamsPool() {
         pill.draggable = true;
         pill.setAttribute('data-team-id', teamId);
         pill.textContent = teamsCache[teamId].name;
-        
+
         pill.addEventListener('dragstart', () => {
             pill.classList.add('dragging');
         });
         pill.addEventListener('dragend', () => {
             pill.classList.remove('dragging');
         });
-        
+
         pool.appendChild(pill);
 
         // Point Select
@@ -280,22 +280,22 @@ function updateTasksTeamsPool() {
 
 function listenToTasks() {
     if (tasksUnsubscribe) tasksUnsubscribe();
-    
+
     const list = document.getElementById('admin-tasks-list');
     if (!list) return;
 
     const selectedDay = tasksDaySelect.value;
     // We will use order ascending
     const q = query(collection(db, "tasks"), where("day", "==", selectedDay), orderBy("order", "asc"));
-    
+
     tasksUnsubscribe = onSnapshot(q, (snapshot) => {
         list.innerHTML = '';
         tasksCache = [];
-        
+
         snapshot.forEach((docSnap) => {
             const data = docSnap.data();
             tasksCache.push({ id: docSnap.id, ...data });
-            
+
             const teamName = data.teamId && teamsCache[data.teamId] ? teamsCache[data.teamId].name : 'غير محددة';
             const teamBadgeStyle = data.teamId ? 'background: var(--md-sys-color-primary); color: white;' : 'background: var(--glass-border); color: black;';
 
@@ -304,7 +304,7 @@ function listenToTasks() {
             item.draggable = true;
             item.setAttribute('data-id', docSnap.id);
             item.setAttribute('data-type', 'task');
-            
+
             item.innerHTML = `
                 <div style="display:flex; gap: 16px; align-items: center; flex: 1;">
                     <span class="material-symbols-rounded" style="color: var(--md-sys-color-secondary); cursor: grab;">drag_indicator</span>
@@ -347,7 +347,7 @@ function listenToTasks() {
                     console.error(err);
                 }
             });
-            
+
             // Unassign on click
             dropZone.addEventListener('dblclick', async () => {
                 if (data.teamId && confirm("إلغاء تعيين الفرقة؟")) {
@@ -362,7 +362,7 @@ function listenToTasks() {
         // Add Listeners
         document.querySelectorAll('.btn-delete-task').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                if(confirm("حذف المهمة؟")) {
+                if (confirm("حذف المهمة؟")) {
                     await deleteDoc(doc(db, "tasks", e.currentTarget.getAttribute('data-id')));
                 }
             });
@@ -402,7 +402,7 @@ function setupTasksDragAndDrop() {
                 i.classList.remove('drag-over-top');
                 i.classList.remove('drag-over-bottom');
             });
-            
+
             const currentItems = [...container.querySelectorAll('.schedule-item.draggable')];
             currentItems.forEach(async (el, index) => {
                 const id = el.getAttribute('data-id');
@@ -463,14 +463,14 @@ document.getElementById('btn-add-points').addEventListener('click', async () => 
         });
 
         // Update team score
-        await updateDoc(doc(db, "teams", teamId), { 
+        await updateDoc(doc(db, "teams", teamId), {
             totalScore: increment(amount)
         });
 
         // Reset fields
         document.getElementById('point-amount').value = '';
         document.getElementById('point-reason').value = '';
-        
+
         alert(`تم إضافة ${amount} نقطة لفرقة ${teamsCache[teamId].name}.`);
     } catch (error) {
         console.error("Error adding points:", error);
@@ -480,15 +480,15 @@ document.getElementById('btn-add-points').addEventListener('click', async () => 
 function listenToPoints() {
     const tbody = document.getElementById('admin-points-tbody');
     const q = query(collection(db, "points_log"), orderBy("createdAt", "desc"));
-    
+
     onSnapshot(q, (snapshot) => {
         tbody.innerHTML = '';
         snapshot.forEach((docSnap) => {
             const data = docSnap.data();
             const tr = document.createElement('tr');
-            
+
             const teamName = data.teamId && teamsCache[data.teamId] ? teamsCache[data.teamId].name : 'محذوفة';
-            const date = new Date(data.createdAt).toLocaleDateString('ar-EG', {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'});
+            const date = new Date(data.createdAt).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
             const amountColor = data.amount > 0 ? 'var(--md-sys-color-primary)' : 'var(--md-sys-color-error)';
             const amountSign = data.amount > 0 ? '+' : '';
 
@@ -508,15 +508,15 @@ function listenToPoints() {
 
         document.querySelectorAll('.btn-delete-points').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                if(confirm("هل أنت متأكد من التراجع عن هذه النقاط؟ سيتم خصمها من الفرقة.")) {
+                if (confirm("هل أنت متأكد من التراجع عن هذه النقاط؟ سيتم خصمها من الفرقة.")) {
                     const id = e.currentTarget.getAttribute('data-id');
                     const teamId = e.currentTarget.getAttribute('data-team-id');
                     const amount = parseInt(e.currentTarget.getAttribute('data-amount'));
-                    
+
                     try {
                         await deleteDoc(doc(db, "points_log", id));
                         // Revert score
-                        await updateDoc(doc(db, "teams", teamId), { 
+                        await updateDoc(doc(db, "teams", teamId), {
                             totalScore: increment(-amount)
                         });
                     } catch (err) {
@@ -565,7 +565,7 @@ document.getElementById('btn-add-schedule').addEventListener('click', async () =
     if (!time) return;
     const title = prompt("أدخل النشاط:");
     if (!title) return;
-    
+
     const day = daySelect.value;
     const nextOrder = scheduleCache.length;
 
@@ -585,24 +585,24 @@ let scheduleUnsubscribe = null;
 
 function listenToSchedule() {
     if (scheduleUnsubscribe) scheduleUnsubscribe();
-    
+
     const list = document.getElementById('admin-schedule-list');
     const selectedDay = daySelect.value;
     const q = query(collection(db, "schedule"), where("day", "==", selectedDay), orderBy("order", "asc"));
-    
+
     scheduleUnsubscribe = onSnapshot(q, (snapshot) => {
         list.innerHTML = '';
         scheduleCache = [];
-        
+
         snapshot.forEach((docSnap) => {
             const data = docSnap.data();
             scheduleCache.push({ id: docSnap.id, ...data });
-            
+
             const item = document.createElement('div');
             item.className = 'schedule-item draggable';
             item.draggable = true;
             item.setAttribute('data-id', docSnap.id);
-            
+
             item.innerHTML = `
                 <div style="display:flex; gap: 16px; align-items: center; flex: 1;">
                     <span class="material-symbols-rounded" style="color: var(--md-sys-color-secondary); cursor: grab;">drag_indicator</span>
@@ -621,7 +621,7 @@ function listenToSchedule() {
 
         document.querySelectorAll('.btn-delete-schedule').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                if(confirm("حذف النشاط؟")) {
+                if (confirm("حذف النشاط؟")) {
                     await deleteDoc(doc(db, "schedule", e.currentTarget.getAttribute('data-id')));
                 }
             });
@@ -635,7 +635,7 @@ function setupScheduleInlineEdit() {
             const id = e.target.getAttribute('data-id');
             const field = e.target.getAttribute('data-field');
             const value = e.target.value;
-            
+
             try {
                 await updateDoc(doc(db, "schedule", id), {
                     [field]: value
@@ -663,7 +663,7 @@ function setupScheduleDragAndDrop() {
                 i.classList.remove('drag-over-top');
                 i.classList.remove('drag-over-bottom');
             });
-            
+
             // Re-calculate orders based on DOM position
             const currentItems = [...container.querySelectorAll('.schedule-item.draggable')];
             currentItems.forEach(async (el, index) => {
@@ -722,12 +722,12 @@ function listenToAdminChat() {
     if (adminChatUnsubscribe) {
         adminChatUnsubscribe();
     }
-    
+
     if (!adminChatSelect || !adminChatMessages) return;
 
     const currentRoom = adminChatSelect.value;
     const q = query(collection(db, "chats"), where("roomId", "==", currentRoom), orderBy("createdAt", "asc"));
-    
+
     adminChatUnsubscribe = onSnapshot(q, (snapshot) => {
         adminChatMessages.innerHTML = '';
         if (snapshot.empty) {
@@ -737,7 +737,7 @@ function listenToAdminChat() {
 
         snapshot.forEach((docSnap) => {
             const data = docSnap.data();
-            
+
             const msgDiv = document.createElement('div');
             msgDiv.className = `chat-message received`;
             msgDiv.style.width = '100%';
@@ -745,9 +745,9 @@ function listenToAdminChat() {
             msgDiv.style.justifyContent = 'space-between';
             msgDiv.style.alignItems = 'center';
             msgDiv.style.gap = '16px';
-            
-            const timeStr = data.createdAt ? new Date(data.createdAt).toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'}) : '';
-            
+
+            const timeStr = data.createdAt ? new Date(data.createdAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : '';
+
             msgDiv.innerHTML = `
                 <div style="flex: 1;">
                     <div class="chat-sender-name">${data.senderName} <span style="font-weight: normal; opacity: 0.7; font-size: 0.7rem;">(${timeStr})</span></div>
@@ -757,7 +757,7 @@ function listenToAdminChat() {
                     <span class="material-symbols-rounded">delete</span>
                 </button>
             `;
-            
+
             adminChatMessages.appendChild(msgDiv);
         });
 
@@ -792,7 +792,7 @@ if (adminChatForm) {
             roomId: currentRoom,
             text: text,
             senderId: 'admin_sys', // special id for admin panel
-            senderName: 'القيادة',
+            senderName: 'الإدارة',
             createdAt: new Date().toISOString()
         };
 
@@ -803,6 +803,34 @@ if (adminChatForm) {
         } catch (error) {
             console.error("Error sending message:", error);
             alert("فشل إرسال الرسالة");
+        }
+    });
+}
+
+// ==============================
+// GLOBAL NOTIFICATIONS
+// ==============================
+const adminNotifForm = document.getElementById('admin-notif-form');
+if (adminNotifForm) {
+    adminNotifForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const title = document.getElementById('notif-title').value;
+        const body = document.getElementById('notif-body').value;
+
+        if (!title || !body) return;
+
+        try {
+            await addDoc(collection(db, "notifications"), {
+                title: title,
+                body: body,
+                timestamp: new Date().toISOString(),
+                sender: 'الإدارة'
+            });
+            alert('تم إرسال الإشعار للجميع بنجاح! 📢');
+            adminNotifForm.reset();
+        } catch (error) {
+            console.error("Error sending notification:", error);
+            alert("فشل إرسال الإشعار");
         }
     });
 }

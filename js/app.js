@@ -1,6 +1,6 @@
 import { db } from './firebase-config.js';
-import { userTeam, userRole } from './auth.js';
-import { collection, query, orderBy, onSnapshot, doc, getDoc, where, addDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { userTeam, userRole, currentUser, currentUserName } from './auth.js';
+import { collection, query, orderBy, onSnapshot, doc, getDoc, where, addDoc, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // Navigation Logic
 const navItems = document.querySelectorAll('.nav-item[data-target]');
@@ -12,13 +12,13 @@ navItems.forEach(item => {
         navItems.forEach(nav => nav.classList.remove('active'));
         contentSections.forEach(section => section.classList.add('hidden'));
         contentSections.forEach(section => section.classList.remove('active'));
-        
+
         // Add active to clicked
         item.classList.add('active');
         const targetId = item.getAttribute('data-target');
         const targetSection = document.getElementById(targetId);
         targetSection.classList.remove('hidden');
-        
+
         // Small delay for animation
         setTimeout(() => targetSection.classList.add('active'), 10);
     });
@@ -30,13 +30,19 @@ window.addEventListener('authReady', () => {
     listenToSchedule();
     listenToTasks();
     listenToLeaderboard();
-    listenToChat();
+    // listenToChat(); // Disabled to reduce database reads
+    listenToNotifications();
+
+    // Request Notification Permission
+    if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission();
+    }
 });
 
 // Fetch user's team name
 async function fetchUserTeamName() {
     const teamEl = document.getElementById('user-team');
-    
+
     if (userRole === 'admin') {
         teamEl.textContent = 'إداري';
         teamEl.style.background = 'var(--md-sys-color-primary)';
@@ -71,7 +77,7 @@ function listenToSchedule() {
     // First, listen to which day is active
     onSnapshot(doc(db, "settings", "campState"), (docSnap) => {
         const tasksDisplayEl = document.getElementById('tasks-active-day-display');
-        
+
         if (docSnap.exists() && docSnap.data().activeDay) {
             activeDay = docSnap.data().activeDay;
             if (displayEl) displayEl.textContent = activeDay;
@@ -82,7 +88,7 @@ function listenToSchedule() {
             activeDay = null;
             if (displayEl) displayEl.textContent = "البرنامج لم يحدد بعد";
             if (tasksDisplayEl) tasksDisplayEl.textContent = "المهام لم تحدد بعد";
-            
+
             scheduleList.innerHTML = '<div class="empty-state">البرنامج اليومي غير متاح حالياً</div>';
             const tasksList = document.getElementById('tasks-list');
             if (tasksList) tasksList.innerHTML = '<div class="empty-state">لا توجد مهام متاحة حالياً</div>';
@@ -106,7 +112,7 @@ function fetchScheduleForActiveDay() {
 
     const scheduleList = document.getElementById('schedule-list');
     const q = query(collection(db, "schedule"), where("day", "==", activeDay), orderBy("order", "asc"));
-    
+
     scheduleUnsubscribe = onSnapshot(q, (snapshot) => {
         scheduleList.innerHTML = '';
         if (snapshot.empty) {
@@ -139,7 +145,7 @@ function fetchTasksForActiveDay() {
 
     const tasksList = document.getElementById('tasks-list');
     const q = query(collection(db, "tasks"), where("day", "==", activeDay), orderBy("order", "asc"));
-    
+
     tasksUnsubscribe = onSnapshot(q, (snapshot) => {
         tasksList.innerHTML = '';
         if (snapshot.empty) {
@@ -155,17 +161,22 @@ function fetchTasksForActiveDay() {
                 if (teamSnap.exists()) teamName = teamSnap.data().name;
             }
 
+            const isMyTeam = data.teamId === userTeam;
             const item = document.createElement('div');
-            item.className = 'task-item';
-            if (data.teamId === userTeam) {
-                item.style.border = '2px solid var(--md-sys-color-primary)';
-            }
+            item.className = `task-card ${isMyTeam ? 'my-task' : ''}`;
 
             item.innerHTML = `
-                <div>
-                    <h3 style="margin-bottom: 4px; font-size: 1.1rem;">${data.title}</h3>
-                    <span class="badge" style="background: var(--glass-border); color: #000;">${teamName}</span>
+                <div class="task-icon">
+                    <span class="material-symbols-rounded">assignment</span>
                 </div>
+                <div class="task-info">
+                    <h3 class="task-title">${data.title}</h3>
+                    <div class="task-assignee">
+                        <span class="material-symbols-rounded" style="font-size: 1rem;">group</span>
+                        <span>${teamName}</span>
+                    </div>
+                </div>
+                ${isMyTeam ? '<div class="my-task-badge">مهمتي</div>' : ''}
             `;
             tasksList.appendChild(item);
         });
@@ -175,7 +186,7 @@ function fetchTasksForActiveDay() {
 function listenToLeaderboard() {
     const leaderboardList = document.getElementById('leaderboard-list');
     const q = query(collection(db, "teams"), orderBy("totalScore", "desc"));
-    
+
     onSnapshot(q, (snapshot) => {
         leaderboardList.innerHTML = '';
         if (snapshot.empty) {
@@ -188,7 +199,7 @@ function listenToLeaderboard() {
             const data = doc.data();
             const item = document.createElement('div');
             item.className = 'leaderboard-item';
-            
+
             // Highlight user's team
             if (doc.id === userTeam) {
                 item.style.background = 'var(--md-sys-color-primary-container)';
@@ -227,11 +238,11 @@ chatTabs.forEach(tab => {
             t.style.background = 'rgba(255,255,255,0.5)';
             t.style.color = 'var(--md-sys-color-secondary)';
         });
-        
+
         tab.classList.add('active');
         tab.style.background = 'var(--md-sys-color-primary)';
         tab.style.color = 'white';
-        
+
         const roomType = tab.getAttribute('data-room');
         if (roomType === 'global') {
             currentChatRoom = 'global';
@@ -244,7 +255,7 @@ chatTabs.forEach(tab => {
                 currentChatRoom = 'none'; // Fallback
             }
         }
-        
+
         listenToChat();
     });
 });
@@ -253,43 +264,70 @@ function listenToChat() {
     if (chatUnsubscribe) {
         chatUnsubscribe();
     }
-    
+
     if (currentChatRoom === 'none') {
         chatMessagesContainer.innerHTML = '<div class="empty-state">ليس لديك فرقة مخصصة بعد.</div>';
         return;
     }
 
     const q = query(collection(db, "chats"), where("roomId", "==", currentChatRoom), orderBy("createdAt", "asc"));
-    
+
+    let isInitialLoad = true;
+
     chatUnsubscribe = onSnapshot(q, (snapshot) => {
-        chatMessagesContainer.innerHTML = '';
-        if (snapshot.empty) {
+        if (snapshot.empty && isInitialLoad) {
             chatMessagesContainer.innerHTML = '<div class="empty-state">لا توجد رسائل هنا. كن أول من يكتب!</div>';
+            isInitialLoad = false;
             return;
         }
 
-        const userId = localStorage.getItem('camp_user_id');
+        // Remove empty state if present
+        const emptyState = chatMessagesContainer.querySelector('.empty-state');
+        if (emptyState) {
+            emptyState.remove();
+        }
 
-        snapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-            const isMe = data.senderId === userId;
-            
-            const msgDiv = document.createElement('div');
-            msgDiv.className = `chat-message ${isMe ? 'sent' : 'received'}`;
-            
-            const timeStr = data.createdAt ? new Date(data.createdAt).toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'}) : '';
-            
-            msgDiv.innerHTML = `
-                ${!isMe ? `<div class="chat-sender-name">${data.senderName}</div>` : ''}
-                <div>${data.text}</div>
-                <div class="chat-timestamp">${timeStr}</div>
-            `;
-            
-            chatMessagesContainer.appendChild(msgDiv);
+        const userId = currentUser ? currentUser.uid : '';
+
+        snapshot.docChanges().forEach((change) => {
+            if (change.type === "added") {
+                const data = change.doc.data();
+                const isMe = data.senderId === userId;
+
+                const msgDiv = document.createElement('div');
+                msgDiv.className = `chat-message ${isMe ? 'sent' : 'received'}`;
+
+                const timeStr = data.createdAt ? new Date(data.createdAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : '';
+
+                msgDiv.innerHTML = `
+                    ${!isMe ? `<div class="chat-sender-name">${data.senderName}</div>` : ''}
+                    <div>${data.text}</div>
+                    <div class="chat-timestamp">${timeStr}</div>
+                `;
+
+                chatMessagesContainer.appendChild(msgDiv);
+
+                // Notification Logic
+                if (!isInitialLoad && !isMe) {
+                    if ("Notification" in window && Notification.permission === "granted") {
+                        // Check if document is visible to avoid spamming if the user is looking at the chat
+                        if (document.hidden || !document.getElementById('chat-section').classList.contains('active')) {
+                            const notifTitle = "رسالة جديدة من " + data.senderName;
+                            const notifOptions = {
+                                body: data.text,
+                                icon: '/icon.png' // Optional: if you have an icon
+                            };
+                            new Notification(notifTitle, notifOptions);
+                        }
+                    }
+                }
+            }
         });
 
-        // Auto scroll to bottom
+        // Auto scroll to bottom on new messages
         chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+
+        isInitialLoad = false;
     });
 }
 
@@ -300,9 +338,8 @@ chatForm.addEventListener('submit', async (e) => {
     if (!text) return;
     if (currentChatRoom === 'none') return;
 
-    const userId = localStorage.getItem('camp_user_id');
-    const userNameElement = document.getElementById('user-name-display');
-    const senderName = userNameElement ? userNameElement.textContent : 'عضو المخيم';
+    const userId = currentUser ? currentUser.uid : 'unknown';
+    const senderName = currentUserName || 'عضو المخيم';
 
     const msgData = {
         roomId: currentChatRoom,
@@ -320,4 +357,84 @@ chatForm.addEventListener('submit', async (e) => {
         console.error("Error sending message:", error);
         alert("فشل إرسال الرسالة");
     }
+});
+
+// ==============================
+// GLOBAL NOTIFICATIONS
+// ==============================
+let isInitialNotifLoad = true;
+let notifUnsubscribe = null;
+
+function listenToNotifications() {
+    if (notifUnsubscribe) notifUnsubscribe();
+
+    // Listen only to the very last notification to avoid reading history
+    const q = query(collection(db, "notifications"), orderBy("timestamp", "desc"), limit(1));
+
+    notifUnsubscribe = onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+            if (change.type === "added") {
+                if (!isInitialNotifLoad) {
+                    const data = change.doc.data();
+
+                    // Show notification
+                    if ("Notification" in window && Notification.permission === "granted") {
+                        new Notification(data.title, {
+                            body: data.body,
+                            icon: './assets/img/logo.png',
+                            requireInteraction: true
+                        });
+                    } else {
+                        // Fallback alert
+                        alert(`📢 ${data.title}\n\n${data.body}`);
+                    }
+                }
+            }
+        });
+        isInitialNotifLoad = false;
+    });
+}
+
+// ==============================
+// PWA INSTALLATION (Service Worker)
+// ==============================
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('Service Worker registered', reg))
+            .catch(err => console.error('Service Worker registration failed', err));
+    });
+}
+
+let deferredPrompt;
+const installBtn = document.getElementById('install-btn');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Prevent the mini-infobar from appearing on mobile
+    e.preventDefault();
+    // Stash the event so it can be triggered later.
+    deferredPrompt = e;
+    // Update UI notify the user they can install the PWA
+    if (installBtn) {
+        installBtn.classList.remove('hidden');
+    }
+});
+
+if (installBtn) {
+    installBtn.addEventListener('click', async () => {
+        if (deferredPrompt) {
+            // Show the install prompt
+            deferredPrompt.prompt();
+            // Wait for the user to respond to the prompt
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`User response to the install prompt: ${outcome}`);
+            // We've used the prompt, and can't use it again, throw it away
+            deferredPrompt = null;
+            installBtn.classList.add('hidden');
+        }
+    });
+}
+
+window.addEventListener('appinstalled', (evt) => {
+    console.log('App was installed successfully.');
 });

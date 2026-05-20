@@ -18,6 +18,7 @@ const adminLogoutBtn = document.getElementById('admin-logout-btn');
 export let currentUser = null;
 export let userRole = null; // 'member' or 'admin'
 export let userTeam = null;
+export let currentUserName = '';
 
 // Determine if we are on the admin page
 const isAdminPage = window.location.pathname.includes('admin.html');
@@ -46,20 +47,31 @@ async function fetchUserData(user) {
             const data = userSnap.data();
             userRole = data.role || 'member';
             userTeam = data.teamId || null;
+            currentUserName = data.name || user.displayName || user.email.split('@')[0];
             
             handleNavigationByRole();
         } else {
-            // First time login - create user document
-            const newUser = {
-                name: user.displayName || user.email.split('@')[0],
-                email: user.email,
-                role: 'member', // default role
-                teamId: null,
-                createdAt: new Date().toISOString()
-            };
-            await setDoc(userRef, newUser);
-            userRole = 'member';
-            handleNavigationByRole();
+            // First time login - show profile completion modal
+            const modal = document.getElementById('complete-profile-modal');
+            if (modal) {
+                // If it's an admin page, we can just save it automatically or they can't complete the modal.
+                // It's better to hide the login section and show the modal if on index.html
+                if (isAdminPage) {
+                    const newUser = {
+                        name: user.displayName || user.email.split('@')[0],
+                        email: user.email,
+                        role: 'member',
+                        teamId: null,
+                        createdAt: new Date().toISOString()
+                    };
+                    await setDoc(userRef, newUser);
+                    userRole = 'member';
+                    handleNavigationByRole();
+                } else {
+                    loginSection.classList.add('hidden');
+                    modal.classList.remove('hidden');
+                }
+            }
         }
     } catch (error) {
         console.error("Error fetching user data:", error);
@@ -110,7 +122,7 @@ function updateUserProfileUI() {
     const teamEl = document.getElementById('user-team');
     const picEl = document.getElementById('user-profile-pic');
 
-    if (nameEl) nameEl.textContent = currentUser.displayName || currentUser.email.split('@')[0];
+    if (nameEl) nameEl.textContent = currentUserName;
     if (picEl && currentUser.photoURL) picEl.src = currentUser.photoURL;
     
     // Team name will be updated by app.js after fetching teams
@@ -158,3 +170,41 @@ async function doLogout() {
 
 if (logoutBtn) logoutBtn.addEventListener('click', doLogout);
 if (adminLogoutBtn) adminLogoutBtn.addEventListener('click', doLogout);
+
+// Profile Completion Listener
+const profileForm = document.getElementById('complete-profile-form');
+if (profileForm) {
+    profileForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fName = document.getElementById('profile-first-name').value.trim();
+        const lName = document.getElementById('profile-last-name').value.trim();
+        
+        if (!fName || !lName) return;
+
+        const fullName = `${fName} ${lName}`;
+        
+        try {
+            const userRef = doc(db, 'users', currentUser.uid);
+            const newUser = {
+                name: fullName,
+                email: currentUser.email,
+                role: 'member',
+                teamId: null,
+                createdAt: new Date().toISOString()
+            };
+            
+            // Re-update currentUser locally so UI shows it right away
+            currentUserName = fullName;
+            
+            await setDoc(userRef, newUser);
+            userRole = 'member';
+            
+            document.getElementById('complete-profile-modal').classList.add('hidden');
+            updateUserProfileUI();
+            handleNavigationByRole();
+        } catch (error) {
+            console.error("Error saving profile:", error);
+            alert("حدث خطأ أثناء حفظ البيانات");
+        }
+    });
+}
