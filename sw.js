@@ -1,12 +1,16 @@
-const CACHE_NAME = 'camp-pwa-cache-v1';
+const CACHE_NAME = 'camp-pwa-cache-v2';
+const DYNAMIC_CACHE_NAME = 'camp-dynamic-cache-v2';
 const urlsToCache = [
   '/',
   '/index.html',
   '/css/style.css',
   '/js/app.js',
   '/js/auth.js',
+  '/js/gallery.js',
   '/js/firebase-config.js',
-  '/assets/img/logo.png'
+  '/assets/img/logo.png',
+  'https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap',
+  'https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200'
 ];
 
 self.addEventListener('install', event => {
@@ -16,17 +20,53 @@ self.addEventListener('install', event => {
         return cache.addAll(urlsToCache);
       })
   );
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(keys => {
+      return Promise.all(keys
+        .filter(key => key !== CACHE_NAME && key !== DYNAMIC_CACHE_NAME)
+        .map(key => caches.delete(key))
+      );
+    })
+  );
 });
 
 self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Cache hit - return response
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
+  // If it's an image from Google Drive or our storage, use Cache First then Network
+  if (event.request.url.includes('drive.google.com/thumbnail') || event.request.destination === 'image') {
+    event.respondWith(
+      caches.match(event.request).then(cachedResponse => {
+        if (cachedResponse) return cachedResponse;
+        return fetch(event.request).then(networkResponse => {
+          return caches.open(DYNAMIC_CACHE_NAME).then(cache => {
+            cache.put(event.request.url, networkResponse.clone());
+            return networkResponse;
+          });
+        }).catch(() => {
+          // Fallback if offline and no image
+          return new Response(''); 
+        });
       })
-  );
+    );
+  } else {
+    // Stale-While-Revalidate for other assets
+    event.respondWith(
+      caches.match(event.request).then(cachedResponse => {
+        const fetchPromise = fetch(event.request).then(networkResponse => {
+          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+              caches.open(CACHE_NAME).then(cache => {
+                  cache.put(event.request, networkResponse.clone());
+              });
+          }
+          return networkResponse;
+        }).catch(() => {
+          // Return cached or offline fallback
+        });
+        return cachedResponse || fetchPromise;
+      })
+    );
+  }
 });

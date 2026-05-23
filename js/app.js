@@ -1,26 +1,78 @@
-import { db } from './firebase-config.js';
-import { userTeam, userRole, currentUser, currentUserName } from './auth.js';
-import { collection, query, orderBy, onSnapshot, doc, getDoc, where, addDoc, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { db, messaging } from './firebase-config.js';
+import { userTeam, userRole, userBadge, currentUser, currentUserName } from './auth.js';
+import { collection, query, orderBy, onSnapshot, doc, getDoc, getDocs, where, addDoc, limit, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-messaging.js";
+
+// Theme Logic
+const themeToggleBtn = document.getElementById('theme-toggle-btn');
+const themeIcon = document.getElementById('theme-icon');
+
+// Check saved theme
+const savedTheme = localStorage.getItem('camp-theme') || 'light';
+if (savedTheme === 'dark') {
+    document.body.setAttribute('data-theme', 'dark');
+    if (themeIcon) themeIcon.textContent = 'light_mode';
+}
+
+if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+        const currentTheme = document.body.getAttribute('data-theme');
+        if (currentTheme === 'dark') {
+            document.body.removeAttribute('data-theme');
+            localStorage.setItem('camp-theme', 'light');
+            if (themeIcon) themeIcon.textContent = 'dark_mode';
+        } else {
+            document.body.setAttribute('data-theme', 'dark');
+            localStorage.setItem('camp-theme', 'dark');
+            if (themeIcon) themeIcon.textContent = 'light_mode';
+        }
+    });
+}
 
 // Navigation Logic
 const navItems = document.querySelectorAll('.nav-item[data-target]');
+const navItemsMore = document.querySelectorAll('.nav-item-more[data-target]');
 const contentSections = document.querySelectorAll('.content-section');
+const btnMoreMenu = document.getElementById('btn-more-menu');
+const moreMenuModal = document.getElementById('more-menu-modal');
+const btnCloseMore = document.getElementById('btn-close-more');
 
-navItems.forEach(item => {
+if (btnMoreMenu && moreMenuModal) {
+    btnMoreMenu.addEventListener('click', () => {
+        moreMenuModal.classList.remove('hidden');
+    });
+}
+if (btnCloseMore && moreMenuModal) {
+    btnCloseMore.addEventListener('click', () => {
+        moreMenuModal.classList.add('hidden');
+    });
+}
+
+const allNavItems = [...navItems, ...navItemsMore];
+
+allNavItems.forEach(item => {
     item.addEventListener('click', () => {
-        // Remove active class from all
+        // Remove active class from all main bottom navs
         navItems.forEach(nav => nav.classList.remove('active'));
+        if (btnMoreMenu) btnMoreMenu.classList.remove('active');
+        
         contentSections.forEach(section => section.classList.add('hidden'));
         contentSections.forEach(section => section.classList.remove('active'));
 
-        // Add active to clicked
-        item.classList.add('active');
+        if (item.classList.contains('nav-item-more')) {
+            if (btnMoreMenu) btnMoreMenu.classList.add('active');
+            if (moreMenuModal) moreMenuModal.classList.add('hidden');
+        } else {
+            item.classList.add('active');
+        }
+
         const targetId = item.getAttribute('data-target');
         const targetSection = document.getElementById(targetId);
-        targetSection.classList.remove('hidden');
-
-        // Small delay for animation
-        setTimeout(() => targetSection.classList.add('active'), 10);
+        if (targetSection) {
+            targetSection.classList.remove('hidden');
+            // Small delay for animation
+            setTimeout(() => targetSection.classList.add('active'), 10);
+        }
     });
 });
 
@@ -32,10 +84,32 @@ window.addEventListener('authReady', () => {
     listenToLeaderboard();
     // listenToChat(); // Disabled to reduce database reads
     listenToNotifications();
+    listenToTrivia();
+    listenToMemories();
 
     // Request Notification Permission
-    if ("Notification" in window && Notification.permission === "default") {
-        Notification.requestPermission();
+    if ("Notification" in window) {
+        Notification.requestPermission().then((permission) => {
+            if (permission === 'granted') {
+                // Initialize FCM Token
+                getToken(messaging, { vapidKey: 'YOUR_VAPID_KEY_HERE' }).then((currentToken) => {
+                    if (currentToken && currentUser) {
+                        updateDoc(doc(db, "users", currentUser.uid), { fcmToken: currentToken });
+                    }
+                }).catch((err) => {
+                    console.log('An error occurred while retrieving token. ', err);
+                });
+            }
+        });
+        
+        try {
+            onMessage(messaging, (payload) => {
+                new Notification(payload.notification.title, {
+                    body: payload.notification.body,
+                    icon: './assets/img/logo.png'
+                });
+            });
+        } catch(e) {}
     }
 });
 
@@ -214,6 +288,10 @@ function listenToLeaderboard() {
                     ${data.totalScore || 0} نقطة
                 </div>
             `;
+            item.style.cursor = 'pointer';
+            item.addEventListener('click', () => {
+                openPointsLogModal(doc.id, data.name);
+            });
             leaderboardList.appendChild(item);
             rank++;
         });
@@ -299,8 +377,9 @@ function listenToChat() {
 
                 const timeStr = data.createdAt ? new Date(data.createdAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : '';
 
+                const badgeHTML = data.senderBadge ? `<span style="font-size: 1rem; margin-right: 4px;">${data.senderBadge}</span>` : '';
                 msgDiv.innerHTML = `
-                    ${!isMe ? `<div class="chat-sender-name">${data.senderName}</div>` : ''}
+                    ${!isMe ? `<div class="chat-sender-name">${data.senderName}${badgeHTML}</div>` : ''}
                     <div>${data.text}</div>
                     <div class="chat-timestamp">${timeStr}</div>
                 `;
@@ -346,6 +425,7 @@ chatForm.addEventListener('submit', async (e) => {
         text: text,
         senderId: userId,
         senderName: senderName,
+        senderBadge: userBadge,
         createdAt: new Date().toISOString()
     };
 
@@ -396,6 +476,304 @@ function listenToNotifications() {
 }
 
 // ==============================
+// POINTS LOG MODAL
+// ==============================
+const pointsLogModal = document.getElementById('points-log-modal');
+const pointsLogCloseBtn = document.getElementById('points-log-close');
+const pointsLogTeamName = document.getElementById('points-log-team-name');
+const pointsLogTbody = document.getElementById('points-log-tbody');
+const pointsLogEmpty = document.getElementById('points-log-empty');
+
+let pointsLogUnsubscribe = null;
+
+if (pointsLogCloseBtn) {
+    pointsLogCloseBtn.addEventListener('click', () => {
+        pointsLogModal.classList.add('hidden');
+        if (pointsLogUnsubscribe) {
+            pointsLogUnsubscribe();
+            pointsLogUnsubscribe = null;
+        }
+    });
+}
+
+function openPointsLogModal(teamId, teamName) {
+    if (!pointsLogModal) return;
+    
+    pointsLogTeamName.textContent = `سجل علامات: ${teamName}`;
+    pointsLogModal.classList.remove('hidden');
+    pointsLogTbody.innerHTML = '';
+    pointsLogEmpty.classList.add('hidden');
+    
+    if (pointsLogUnsubscribe) pointsLogUnsubscribe();
+    
+    const q = query(collection(db, "points_log"), where("teamId", "==", teamId), orderBy("createdAt", "desc"));
+    
+    pointsLogUnsubscribe = onSnapshot(q, (snapshot) => {
+        pointsLogTbody.innerHTML = '';
+        if (snapshot.empty) {
+            pointsLogEmpty.classList.remove('hidden');
+            return;
+        }
+        
+        pointsLogEmpty.classList.add('hidden');
+        
+        snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            const tr = document.createElement('tr');
+            
+            const date = new Date(data.createdAt).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
+            const amountColor = data.amount > 0 ? 'var(--md-sys-color-primary)' : 'var(--md-sys-color-error)';
+            const amountSign = data.amount > 0 ? '+' : '';
+            
+            tr.innerHTML = `
+                <td style="color: ${amountColor}; font-weight: bold; padding: 12px; border-bottom: 1px solid var(--glass-border);" dir="ltr">${amountSign}${data.amount}</td>
+                <td style="padding: 12px; border-bottom: 1px solid var(--glass-border);">${data.reason}</td>
+                <td style="padding: 12px; border-bottom: 1px solid var(--glass-border); font-size: 0.9rem; opacity: 0.8;">${date}</td>
+            `;
+            pointsLogTbody.appendChild(tr);
+        });
+    });
+}
+
+// ==============================
+// TRIVIA
+// ==============================
+const triviaEmptyState = document.getElementById('trivia-empty-state');
+const triviaActiveState = document.getElementById('trivia-active-state');
+const triviaSolvedState = document.getElementById('trivia-solved-state');
+const triviaQuestion = document.getElementById('trivia-question');
+const triviaOptions = document.getElementById('trivia-options');
+const triviaPointsDisplay = document.getElementById('trivia-points-display');
+const triviaWinnerText = document.getElementById('trivia-winner-text');
+
+let currentTriviaData = null;
+
+function listenToTrivia() {
+    onSnapshot(doc(db, "trivia", "active"), async (docSnap) => {
+        if (!docSnap.exists() || !docSnap.data().isActive) {
+            if(triviaEmptyState) triviaEmptyState.classList.remove('hidden');
+            if(triviaActiveState) triviaActiveState.classList.add('hidden');
+            if(triviaSolvedState) triviaSolvedState.classList.add('hidden');
+            return;
+        }
+
+        const data = docSnap.data();
+        currentTriviaData = data;
+        
+        if (data.winnerTeamId) {
+            // Already solved
+            if(triviaEmptyState) triviaEmptyState.classList.add('hidden');
+            if(triviaActiveState) triviaActiveState.classList.add('hidden');
+            if(triviaSolvedState) triviaSolvedState.classList.remove('hidden');
+            
+            let wName = 'فرقة غير معروفة';
+            if (data.winnerTeamId) {
+                const ts = await getDoc(doc(db, 'teams', data.winnerTeamId));
+                if (ts.exists()) wName = ts.data().name;
+            }
+            if(triviaWinnerText) triviaWinnerText.textContent = `فازت بها ${wName} (+${data.points} نقطة)`;
+            return;
+        }
+
+        // Active and not solved
+        if(triviaEmptyState) triviaEmptyState.classList.add('hidden');
+        if(triviaActiveState) triviaActiveState.classList.remove('hidden');
+        if(triviaSolvedState) triviaSolvedState.classList.add('hidden');
+
+        if(triviaQuestion) triviaQuestion.textContent = data.question;
+        if(triviaPointsDisplay) triviaPointsDisplay.textContent = `النقاط: ${data.points}`;
+        
+        if(triviaOptions) {
+            triviaOptions.innerHTML = '';
+            data.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-secondary btn-large';
+                btn.style.textAlign = 'right';
+                btn.textContent = opt;
+                btn.onclick = () => submitTriviaAnswer(idx);
+                triviaOptions.appendChild(btn);
+            });
+        }
+    });
+}
+
+async function submitTriviaAnswer(selectedIndex) {
+    if (!currentTriviaData || !currentTriviaData.isActive || currentTriviaData.winnerTeamId) return;
+    if (!userTeam) {
+        alert("يجب أن تكون ضمن فرقة للإجابة!");
+        return;
+    }
+    
+    if (selectedIndex === currentTriviaData.correctIndex) {
+        try {
+            // Try to claim the win
+            await updateDoc(doc(db, "trivia", "active"), {
+                winnerTeamId: userTeam
+            });
+            
+            // Add points to team
+            const teamRef = doc(db, 'teams', userTeam);
+            const ts = await getDoc(teamRef);
+            if(ts.exists()){
+                await updateDoc(teamRef, {
+                    totalScore: (ts.data().totalScore || 0) + currentTriviaData.points
+                });
+            }
+            
+            // Log points
+            await addDoc(collection(db, "points_log"), {
+                teamId: userTeam,
+                amount: currentTriviaData.points,
+                reason: `الفوز بمسابقة: ${currentTriviaData.question}`,
+                createdAt: new Date().toISOString()
+            });
+            
+            alert('إجابة صحيحة! مبروك لفرقتك 🎉');
+        } catch(err) {
+            console.error(err);
+            alert("حدث خطأ أثناء تسجيل إجابتك، ربما سبقك فريق آخر!");
+        }
+    } else {
+        alert('إجابة خاطئة! حظاً أوفر.');
+    }
+}
+
+// ==============================
+// MEMORIES
+// ==============================
+let memoryUsersCache = [];
+let targetMemoryUserId = null;
+
+const tabMyMemories = document.getElementById('tab-my-memories');
+const tabWriteMemory = document.getElementById('tab-write-memory');
+const myMemoriesContainer = document.getElementById('my-memories-container');
+const writeMemoryContainer = document.getElementById('write-memory-container');
+
+if (tabMyMemories && tabWriteMemory) {
+    tabMyMemories.addEventListener('click', () => {
+        tabMyMemories.className = 'btn btn-primary';
+        tabWriteMemory.className = 'btn btn-secondary';
+        myMemoriesContainer.classList.remove('hidden');
+        writeMemoryContainer.classList.add('hidden');
+    });
+
+    tabWriteMemory.addEventListener('click', () => {
+        tabWriteMemory.className = 'btn btn-primary';
+        tabMyMemories.className = 'btn btn-secondary';
+        writeMemoryContainer.classList.remove('hidden');
+        myMemoriesContainer.classList.add('hidden');
+        if(memoryUsersCache.length === 0) fetchMemoryUsers();
+    });
+}
+
+function listenToMemories() {
+    if (!currentUser) return;
+    const q = query(collection(db, "memories"), where("toUserId", "==", currentUser.uid), orderBy("createdAt", "desc"));
+    onSnapshot(q, (snapshot) => {
+        const list = document.getElementById('my-memories-list');
+        if (!list) return;
+        list.innerHTML = '';
+        if (snapshot.empty) {
+            list.innerHTML = '<div class="empty-state">لم يكتب لك أحد بعد. بادر أنت بالكتابة لأصدقائك!</div>';
+            return;
+        }
+        snapshot.forEach(docSnap => {
+            const data = docSnap.data();
+            const div = document.createElement('div');
+            div.className = 'glass-card';
+            div.style.padding = '16px';
+            div.innerHTML = `
+                <div style="font-weight:bold; color:var(--md-sys-color-primary); margin-bottom:8px;">من: ${data.fromUserName}</div>
+                <div style="white-space: pre-wrap;">${data.text}</div>
+            `;
+            list.appendChild(div);
+        });
+    });
+}
+
+async function fetchMemoryUsers() {
+    const list = document.getElementById('memory-users-list');
+    if (!list) return;
+    list.innerHTML = 'جاري التحميل...';
+    try {
+        const q = query(collection(db, "users"));
+        const snap = await getDocs(q);
+        memoryUsersCache = [];
+        snap.forEach(d => {
+            if(d.id !== currentUser.uid) { // Don't show myself
+                memoryUsersCache.push({ id: d.id, ...d.data() });
+            }
+        });
+        renderMemoryUsers(memoryUsersCache);
+    } catch(e) {
+        console.error(e);
+        list.innerHTML = 'خطأ في تحميل المشتركين';
+    }
+}
+
+function renderMemoryUsers(usersList) {
+    const list = document.getElementById('memory-users-list');
+    if (!list) return;
+    list.innerHTML = '';
+    usersList.forEach(u => {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-secondary';
+        btn.style.padding = '12px';
+        btn.textContent = u.name;
+        btn.onclick = () => openMemoryModal(u.id, u.name);
+        list.appendChild(btn);
+    });
+}
+
+const memoryUserSearch = document.getElementById('memory-user-search');
+if (memoryUserSearch) {
+    memoryUserSearch.addEventListener('input', (e) => {
+        const term = e.target.value.toLowerCase();
+        const filtered = memoryUsersCache.filter(u => u.name.toLowerCase().includes(term));
+        renderMemoryUsers(filtered);
+    });
+}
+
+function openMemoryModal(id, name) {
+    targetMemoryUserId = id;
+    document.getElementById('memory-to-name').textContent = name;
+    document.getElementById('memory-text').value = '';
+    document.getElementById('write-memory-modal').classList.remove('hidden');
+}
+
+const btnCancelMemory = document.getElementById('btn-cancel-memory');
+if (btnCancelMemory) {
+    btnCancelMemory.addEventListener('click', () => {
+        document.getElementById('write-memory-modal').classList.add('hidden');
+    });
+}
+
+const btnSubmitMemory = document.getElementById('btn-submit-memory');
+if (btnSubmitMemory) {
+    btnSubmitMemory.addEventListener('click', async () => {
+        const text = document.getElementById('memory-text').value.trim();
+        if(!text) return;
+        
+        btnSubmitMemory.disabled = true;
+        try {
+            await addDoc(collection(db, "memories"), {
+                fromUserId: currentUser.uid,
+                fromUserName: currentUserName,
+                toUserId: targetMemoryUserId,
+                text: text,
+                createdAt: new Date().toISOString()
+            });
+            alert('تم إرسال الذكرى بنجاح! 💌');
+            document.getElementById('write-memory-modal').classList.add('hidden');
+        } catch(e) {
+            console.error(e);
+            alert('حدث خطأ');
+        }
+        btnSubmitMemory.disabled = false;
+    });
+}
+
+// ==============================
 // PWA INSTALLATION (Service Worker)
 // ==============================
 if ('serviceWorker' in navigator) {
@@ -437,4 +815,10 @@ if (installBtn) {
 
 window.addEventListener('appinstalled', (evt) => {
     console.log('App was installed successfully.');
+    if (installBtn) installBtn.classList.add('hidden');
 });
+
+// Explicitly check if app is already running in standalone mode (installed)
+if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+    if (installBtn) installBtn.classList.add('hidden');
+}

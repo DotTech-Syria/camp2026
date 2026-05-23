@@ -52,6 +52,28 @@
                     <input type="password" id="login-password" placeholder="كلمة المرور" required>
                 </div>
                 <button type="submit" class="btn btn-secondary btn-large">دخول</button>
+                <div style="margin-top: 16px;">
+                    <a href="#" id="show-register-link" style="color: var(--md-sys-color-primary); font-weight: bold; text-decoration: none; font-size: 0.9rem;">ليس لديك حساب؟ إنشاء حساب جديد</a>
+                </div>
+            </form>
+
+            <form id="email-register-form" class="hidden">
+                <div class="input-group">
+                    <span class="material-symbols-rounded">person</span>
+                    <input type="text" id="register-name" placeholder="الاسم الكامل (سيظهر للجميع)" required>
+                </div>
+                <div class="input-group">
+                    <span class="material-symbols-rounded">mail</span>
+                    <input type="email" id="register-email" placeholder="البريد الإلكتروني" required>
+                </div>
+                <div class="input-group">
+                    <span class="material-symbols-rounded">lock</span>
+                    <input type="password" id="register-password" placeholder="كلمة المرور (6 أحرف على الأقل)" required minlength="6">
+                </div>
+                <button type="submit" class="btn btn-secondary btn-large">إنشاء حساب</button>
+                <div style="margin-top: 16px;">
+                    <a href="#" id="show-login-link" style="color: var(--md-sys-color-primary); font-weight: bold; text-decoration: none; font-size: 0.9rem;">لديك حساب بالفعل؟ تسجيل الدخول</a>
+                </div>
             </form>
         </div>
     </section>
@@ -68,8 +90,8 @@
                 </div>
             </div>
             <div style="display: flex; gap: 8px; align-items: center;">
-                <button id="install-btn" class="btn btn-primary hidden" style="font-size: 0.9rem; padding: 6px 12px; border-radius: 20px;">
-                    <span class="material-symbols-rounded" style="font-size: 1.2rem; margin-left: 4px;">download</span> تثبيت التطبيق
+                <button id="theme-toggle-btn" class="btn btn-icon" title="تبديل المظهر">
+                    <span class="material-symbols-rounded" id="theme-icon">dark_mode</span>
                 </button>
                 <button id="logout-btn" class="btn btn-icon" title="تسجيل الخروج">
                     <span class="material-symbols-rounded">logout</span>
@@ -116,11 +138,13 @@
             <section id="gallery-section" class="content-section glass-card hidden">
                 <h2><span class="material-symbols-rounded">photo_library</span> الاستوديو المشترك</h2>
 
-                <div class="upload-container">
-                    <label for="photo-upload" class="btn btn-primary btn-upload">
-                        <span class="material-symbols-rounded">cloud_upload</span>
-                        شارك صورك معنا
-                    </label>
+                <div class="upload-container" style="display: flex; flex-direction: column; align-items: center; gap: 12px; margin-bottom: 24px;">
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center;">
+                        <label for="photo-upload" class="btn btn-primary btn-upload">
+                            <span class="material-symbols-rounded">cloud_upload</span>
+                            شارك صورك معنا
+                        </label>
+                    </div>
                     <input type="file" id="photo-upload" accept="image/*" multiple hidden>
                     <div id="upload-status" class="upload-status"></div>
                 </div>
@@ -157,10 +181,54 @@
                     </button>
                 </form>
             </section>
+
+            <!-- Trivia Section -->
+            <section id="trivia-section" class="content-section glass-card hidden">
+                <h2><span class="material-symbols-rounded">quiz</span> المسابقات اليومية</h2>
+                <div id="trivia-container" style="text-align: center; padding: 16px;">
+                    <div id="trivia-empty-state" class="empty-state">لا يوجد سؤال متاح حالياً. استعد!</div>
+                    <div id="trivia-active-state" class="hidden">
+                        <h3 id="trivia-question" style="font-size: 1.5rem; margin-bottom: 24px;"></h3>
+                        <div id="trivia-options" style="display: flex; flex-direction: column; gap: 12px;">
+                            <!-- Options injected here -->
+                        </div>
+                        <div id="trivia-points-display" style="margin-top: 16px; font-weight: bold; color: var(--md-sys-color-secondary);"></div>
+                    </div>
+                    <div id="trivia-solved-state" class="hidden" style="margin-top: 24px; padding: 16px; background: var(--md-sys-color-primary-container); border-radius: 16px;">
+                        <span class="material-symbols-rounded" style="font-size: 3rem; color: var(--md-sys-color-primary);">check_circle</span>
+                        <h3 style="color: var(--md-sys-color-on-primary-container); margin-top: 8px;">انتهى السؤال!</h3>
+                        <p id="trivia-winner-text" style="font-weight: bold; margin-top: 8px;"></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Memories Section -->
+            <section id="memories-section" class="content-section glass-card hidden">
+                <h2><span class="material-symbols-rounded">book</span> دفتر الذكريات</h2>
+                <p style="text-align:center; color:var(--md-sys-color-secondary); margin-bottom:16px;">رسائل خاصة بك من أصدقائك في المخيم، لا يراها غيرك.</p>
+                
+                <div style="display:flex; gap:8px; justify-content:center; margin-bottom:16px;">
+                    <button id="tab-my-memories" class="btn btn-primary" style="flex:1;">ذكرياتي</button>
+                    <button id="tab-write-memory" class="btn btn-secondary" style="flex:1;">اكتب لغيري</button>
+                </div>
+
+                <!-- My Memories -->
+                <div id="my-memories-container">
+                    <div id="my-memories-list" style="display:flex; flex-direction:column; gap:12px;"></div>
+                </div>
+
+                <!-- Write Memory -->
+                <div id="write-memory-container" class="hidden">
+                    <input type="text" id="memory-user-search" placeholder="ابحث عن اسم المشترك..." style="width:100%; padding:12px; margin-bottom:12px; border-radius:12px; border:1px solid var(--glass-border); font-family:var(--font-primary);">
+                    <div id="memory-users-list" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap:12px;">
+                        <!-- Users will be populated here -->
+                    </div>
+                </div>
+            </section>
         </div>
 
         <!-- Bottom Navigation -->
-        <nav class="bottom-nav glass-panel">
+        <nav class="bottom-nav glass-panel" id="main-bottom-nav">
             <button class="nav-item active" data-target="schedule-section">
                 <span class="material-symbols-rounded">calendar_today</span>
                 <span>البرنامج</span>
@@ -171,15 +239,11 @@
             </button>
             <button class="nav-item" data-target="leaderboard-section">
                 <span class="material-symbols-rounded">leaderboard</span>
-                <span>التقييم</span>
+                <span>العلامات</span>
             </button>
-            <button class="nav-item" data-target="gallery-section">
-                <span class="material-symbols-rounded">photo_library</span>
-                <span>الصور</span>
-            </button>
-            <button class="nav-item" data-target="chat-section" style="display: none;">
-                <span class="material-symbols-rounded">chat</span>
-                <span>الدردشة</span>
+            <button class="nav-item" id="btn-more-menu">
+                <span class="material-symbols-rounded">grid_view</span>
+                <span>المزيد</span>
             </button>
         </nav>
     </main>
@@ -188,15 +252,77 @@
     <div id="image-modal" class="image-modal hidden">
         <div class="modal-controls">
             <button id="modal-close" class="btn btn-icon"><span class="material-symbols-rounded">close</span></button>
-            <a id="modal-download" class="btn btn-icon" download><span
-                    class="material-symbols-rounded">download</span></a>
+            <a id="modal-download" class="btn btn-icon" download target="_blank"><span class="material-symbols-rounded">download</span></a>
         </div>
-        <img id="modal-image" src="" alt="Full size photo">
+        
+        <div class="modal-content-wrapper">
+            <div class="modal-image-container">
+                <img id="modal-image" src="" alt="Full size photo">
+            </div>
+            
+            <div class="modal-sidebar glass-card">
+                <div class="modal-sidebar-header">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <img id="modal-uploader-pic" src="https://via.placeholder.com/40" class="profile-pic" style="width: 32px; height: 32px;" alt="Uploader">
+                        <div>
+                            <div id="modal-uploader-name" style="font-weight: bold; font-size: 0.9rem;">اسم الناشر</div>
+                            <div id="modal-upload-date" style="font-size: 0.75rem; opacity: 0.8;">التاريخ</div>
+                        </div>
+                    </div>
+                    <button id="modal-like-btn" class="btn btn-icon" style="color: var(--md-sys-color-secondary); width: auto; padding: 0 8px; border-radius: 16px;">
+                        <span class="material-symbols-rounded" id="modal-like-icon">favorite</span>
+                        <span id="modal-like-count" style="font-size: 0.9rem; font-family: var(--font-primary); font-weight: bold; margin-right: 4px;">0</span>
+                    </button>
+                </div>
+                
+                <div class="comments-container" id="modal-comments-list">
+                    <!-- Comments injected here -->
+                </div>
+                
+                <form id="modal-comment-form" class="comment-input-area">
+                    <input type="text" id="modal-comment-input" placeholder="أضف تعليقاً..." required autocomplete="off">
+                    <button type="submit" class="btn btn-icon" style="color: var(--md-sys-color-primary);">
+                        <span class="material-symbols-rounded">send</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- More Menu Modal -->
+    <div id="more-menu-modal" class="image-modal hidden" style="z-index: 2000; align-items: flex-end; padding: 0;">
+        <div class="glass-card" style="width: 100%; border-radius: 24px 24px 0 0; padding: 24px; animation: slideUp 0.3s ease-out; margin: 0; max-height: 80vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <h2 style="margin: 0;">المزيد من الأقسام</h2>
+                <button id="btn-close-more" class="btn btn-icon"><span class="material-symbols-rounded">close</span></button>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
+                <button class="btn btn-secondary nav-item-more" data-target="gallery-section" style="padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; border-radius: 16px;">
+                    <span class="material-symbols-rounded" style="font-size: 32px;">photo_library</span>
+                    <span style="font-weight: bold;">الصور</span>
+                </button>
+                <button class="btn btn-secondary nav-item-more" data-target="trivia-section" style="padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; border-radius: 16px;">
+                    <span class="material-symbols-rounded" style="font-size: 32px;">quiz</span>
+                    <span style="font-weight: bold;">المسابقات</span>
+                </button>
+                <button class="btn btn-secondary nav-item-more" data-target="memories-section" style="padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; border-radius: 16px;">
+                    <span class="material-symbols-rounded" style="font-size: 32px;">book</span>
+                    <span style="font-weight: bold;">الذكريات</span>
+                </button>
+                <button class="btn btn-secondary nav-item-more hidden" id="more-chat-btn" data-target="chat-section" style="padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; border-radius: 16px;">
+                    <span class="material-symbols-rounded" style="font-size: 32px;">chat</span>
+                    <span style="font-weight: bold;">الدردشة</span>
+                </button>
+                <button class="btn hidden" id="install-btn" style="padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; border-radius: 16px; background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%); color: #1a1a1a; border: 1px solid #b8cce4; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                    <span class="material-symbols-rounded" style="font-size: 32px;">download</span>
+                    <span style="font-weight: bold;">تثبيت التطبيق</span>
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Complete Profile Modal -->
-    <div id="complete-profile-modal" class="image-modal hidden"
-        style="background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center;">
+    <div id="complete-profile-modal" class="image-modal hidden" style="z-index: 3000;">
         <div class="glass-card" style="width: 90%; max-width: 400px; padding: 24px; text-align: center;">
             <h2 style="margin-bottom: 8px;">أهلاً بك في المخيم!</h2>
             <p style="margin-bottom: 24px; font-size: 0.9rem; opacity: 0.8;">يرجى إكمال بياناتك للمتابعة</p>
@@ -211,6 +337,44 @@
                 </div>
                 <button type="submit" class="btn btn-primary w-100" id="btn-save-profile">حفظ ومتابعة</button>
             </form>
+        </div>
+    </div>
+
+    <!-- Write Memory Modal -->
+    <div id="write-memory-modal" class="image-modal hidden" style="z-index: 2000;">
+        <div class="glass-card" style="width: 90%; max-width: 400px; padding: 24px; display: flex; flex-direction: column;">
+            <h2 style="margin-bottom: 16px;">اكتب ذكرى لـ <span id="memory-to-name" style="color:var(--md-sys-color-primary);"></span></h2>
+            <textarea id="memory-text" placeholder="اكتب رسالتك الجميلة هنا... سيتم إرسالها بشكل خاص." required style="width:100%; min-height: 120px; padding:12px; border-radius:12px; border: 1px solid var(--glass-border); margin-bottom: 16px; font-family: var(--font-primary);"></textarea>
+            <div style="display: flex; gap: 12px;">
+                <button id="btn-submit-memory" class="btn btn-primary" style="flex:1;">إرسال الذكرى 💌</button>
+                <button id="btn-cancel-memory" class="btn btn-secondary" style="flex:1;">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Points Log Modal -->
+    <div id="points-log-modal" class="image-modal hidden"
+        style="background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 3000;">
+        <div class="glass-card" style="width: 90%; max-width: 500px; padding: 24px; max-height: 80vh; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h2 id="points-log-team-name" style="margin: 0;">سجل العلامات</h2>
+                <button id="points-log-close" class="btn btn-icon"><span class="material-symbols-rounded">close</span></button>
+            </div>
+            <div style="overflow-y: auto; flex: 1;">
+                <table class="data-table" style="width: 100%; text-align: right; border-collapse: collapse;">
+                    <thead>
+                        <tr>
+                            <th style="padding: 8px; border-bottom: 1px solid var(--glass-border);">العلامة</th>
+                            <th style="padding: 8px; border-bottom: 1px solid var(--glass-border);">السبب</th>
+                            <th style="padding: 8px; border-bottom: 1px solid var(--glass-border);">التاريخ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="points-log-tbody">
+                        <!-- Points log items injected here -->
+                    </tbody>
+                </table>
+                <div id="points-log-empty" class="empty-state hidden" style="text-align: center; margin-top: 24px;">لا توجد علامات مسجلة بعد.</div>
+            </div>
         </div>
     </div>
 

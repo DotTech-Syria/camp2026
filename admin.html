@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لوحة الإدارة | مخيم مار ميخائيل</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏕️</text></svg>">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏕️</text></svg>">
 
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link
@@ -59,11 +60,22 @@
                 <button class="nav-item" data-target="admin-settings">
                     <span class="material-symbols-rounded">settings</span> الإعدادات
                 </button>
+                <button class="nav-item" data-target="admin-gallery">
+                    <span class="material-symbols-rounded">photo_library</span> إدارة الاستوديو
+                </button>
+                <button class="nav-item" data-target="admin-memories">
+                    <span class="material-symbols-rounded">book</span> دفتر الذكريات
+                </button>
                 <button class="nav-item" data-target="admin-chat" style="display: none;">
                     <span class="material-symbols-rounded">forum</span> مراقبة المحادثات
                 </button>
                 <button class="nav-item" data-target="admin-notifications">
-                    <span class="material-symbols-rounded">campaign</span> إرسال إشعار عام
+                    <span class="material-symbols-rounded">campaign</span>
+                    <span>الإشعارات</span>
+                </button>
+                <button class="nav-item" data-target="admin-trivia">
+                    <span class="material-symbols-rounded">quiz</span>
+                    <span>المسابقات</span>
                 </button>
             </nav>
             <div class="sidebar-footer">
@@ -256,21 +268,178 @@
                     <h2>إرسال إشعار عام</h2>
                 </div>
                 <div style="max-width: 600px; padding: 16px; background: rgba(255,255,255,0.5); border-radius: 16px;">
-                    <p style="margin-bottom: 16px; color: var(--md-sys-color-secondary);">سيظهر هذا الإشعار على أجهزة جميع الأعضاء مباشرة في حال توافق متصفحاتهم مع الإشعارات.</p>
-                    
+                    <p style="margin-bottom: 16px; color: var(--md-sys-color-secondary);">سيظهر هذا الإشعار على أجهزة
+                        جميع الأعضاء مباشرة في حال توافق متصفحاتهم مع الإشعارات.</p>
+
                     <form id="admin-notif-form" style="display: flex; flex-direction: column; gap: 16px;">
-                        <input type="text" id="notif-title" class="input-group" placeholder="عنوان الإشعار (مثال: إعلان هام!)" required style="padding: 12px; border-radius: 12px; font-family: var(--font-primary);">
-                        <textarea id="notif-body" class="input-group" placeholder="اكتب نص الإشعار هنا..." required style="padding: 12px; border-radius: 12px; font-family: var(--font-primary); min-height: 120px;"></textarea>
+                        <input type="text" id="notif-title" class="input-group"
+                            placeholder="عنوان الإشعار (مثال: إعلان هام!)" required
+                            style="padding: 12px; border-radius: 12px; font-family: var(--font-primary);">
+                        <textarea id="notif-body" class="input-group" placeholder="اكتب نص الإشعار هنا..." required
+                            style="padding: 12px; border-radius: 12px; font-family: var(--font-primary); min-height: 120px;"></textarea>
                         <button type="submit" class="btn btn-primary" style="align-self: flex-start;">
                             <span class="material-symbols-rounded">send</span> إرسال الإشعار للجميع
                         </button>
                     </form>
                 </div>
             </section>
+
+            <!-- Trivia Management Section -->
+            <section id="admin-trivia" class="admin-section hidden glass-card">
+                <div class="section-header">
+                    <h2>إدارة المسابقات ❓</h2>
+                </div>
+                <div class="glass-card" style="margin-bottom: 24px;">
+                    <h3>طرح سؤال جديد</h3>
+                    <form id="admin-trivia-form" style="display: flex; flex-direction: column; gap: 16px;">
+                        <input type="text" id="trivia-q" placeholder="نص السؤال"
+                            style="width:100%; padding: 12px; border-radius: 12px; border: 1px solid var(--glass-border); font-family: var(--font-primary);"
+                            required>
+                        <input type="text" id="trivia-opt1" placeholder="الخيار الأول"
+                            style="width:100%; padding: 12px; border-radius: 12px; border: 1px solid var(--glass-border); font-family: var(--font-primary);"
+                            required>
+                        <input type="text" id="trivia-opt2" placeholder="الخيار الثاني"
+                            style="width:100%; padding: 12px; border-radius: 12px; border: 1px solid var(--glass-border); font-family: var(--font-primary);"
+                            required>
+                        <input type="text" id="trivia-opt3" placeholder="الخيار الثالث"
+                            style="width:100%; padding: 12px; border-radius: 12px; border: 1px solid var(--glass-border); font-family: var(--font-primary);"
+                            required>
+                        <input type="text" id="trivia-opt4" placeholder="الخيار الرابع"
+                            style="width:100%; padding: 12px; border-radius: 12px; border: 1px solid var(--glass-border); font-family: var(--font-primary);"
+                            required>
+
+                        <div style="display: flex; gap: 16px;">
+                            <select id="trivia-correct"
+                                style="flex: 1; padding: 12px; border-radius: 12px; border: 1px solid var(--glass-border); font-family: var(--font-primary);"
+                                required>
+                                <option value="">اختر الإجابة الصحيحة...</option>
+                                <option value="0">الخيار الأول</option>
+                                <option value="1">الخيار الثاني</option>
+                                <option value="2">الخيار الثالث</option>
+                                <option value="3">الخيار الرابع</option>
+                            </select>
+                            <input type="number" id="trivia-points" placeholder="النقاط (مثال: 50)"
+                                style="flex: 1; padding: 12px; border-radius: 12px; border: 1px solid var(--glass-border); font-family: var(--font-primary);"
+                                required>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">نشر السؤال فوراً</button>
+                    </form>
+                </div>
+
+
+                <div class="glass-card" style="margin-top: 24px;">
+                    <h3>حالة السؤال الحالي</h3>
+                    <div id="active-trivia-status" style="margin-top: 16px; font-weight: bold;">جاري التحميل...</div>
+                    <button id="btn-close-trivia" class="btn btn-danger hidden" style="margin-top: 16px;">إغلاق
+                        السؤال</button>
+                </div>
+            </section>
+
+            <!-- Gallery Management Section -->
+            <section id="admin-gallery" class="admin-section hidden glass-card">
+                <div class="section-header">
+                    <h2>إدارة الاستوديو والتعليقات</h2>
+                </div>
+
+
+
+                <div id="admin-gallery-grid" class="gallery-grid"
+                    style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+                    <!-- Admin photos will be injected here -->
+                </div>
+            </section>
+            <!-- Memories Section -->
+            <section id="admin-memories" class="admin-section hidden glass-card">
+                <div class="section-header">
+                    <h2>دفتر الذكريات</h2>
+                </div>
+                <div style="display:flex; gap:8px; justify-content:center; margin-bottom:16px;">
+                    <button id="admin-tab-my-memories" class="btn btn-primary" style="flex:1;">ذكرياتي</button>
+                    <button id="admin-tab-write-memory" class="btn btn-secondary" style="flex:1;">اكتب لغيري</button>
+                </div>
+
+                <!-- Admin My Memories -->
+                <div id="admin-my-memories-container">
+                    <div id="admin-my-memories-list" style="display:flex; flex-direction:column; gap:12px;"></div>
+                </div>
+
+                <!-- Admin Write Memory -->
+                <div id="admin-write-memory-container" class="hidden">
+                    <input type="text" id="admin-memory-user-search" placeholder="ابحث عن اسم المشترك أو المشرف..."
+                        style="width:100%; padding:12px; margin-bottom:12px; border-radius:12px; border:1px solid var(--glass-border); font-family:var(--font-primary);">
+                    <div id="admin-memory-users-list"
+                        style="display:grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap:12px;">
+                        <!-- Users will be populated here -->
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
 
     <!-- Modals will be dynamically added or pre-defined here -->
+
+    <!-- Admin Write Memory Modal -->
+    <div id="admin-write-memory-modal" class="image-modal hidden" style="z-index: 2000;">
+        <div class="glass-card"
+            style="width: 90%; max-width: 400px; padding: 24px; display: flex; flex-direction: column;">
+            <h2 style="margin-bottom: 16px;">اكتب ذكرى لـ <span id="admin-memory-to-name"
+                    style="color:var(--md-sys-color-primary);"></span></h2>
+            <textarea id="admin-memory-text" placeholder="اكتب رسالتك الجميلة هنا..." required
+                style="width:100%; min-height: 120px; padding:12px; border-radius:12px; border: 1px solid var(--glass-border); margin-bottom: 16px; font-family: var(--font-primary);"></textarea>
+            <div style="display: flex; gap: 12px;">
+                <button id="admin-btn-submit-memory" class="btn btn-primary" style="flex:1;">إرسال الذكرى 💌</button>
+                <button id="admin-btn-cancel-memory" class="btn btn-secondary" style="flex:1;">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Comments Modal -->
+    <div id="admin-comments-modal" class="image-modal hidden" style="z-index: 2000;">
+        <div class="modal-controls">
+            <button id="admin-modal-close" class="btn btn-icon"><span
+                    class="material-symbols-rounded">close</span></button>
+        </div>
+        <div class="glass-card"
+            style="width: 90%; max-width: 500px; max-height: 80vh; display: flex; flex-direction: column; padding: 24px;">
+            <h2 style="margin-bottom: 16px;">إدارة التعليقات</h2>
+            <div id="admin-comments-list"
+                style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 8px;">
+                <!-- Comments will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin User Manage Modal -->
+    <div id="admin-user-modal" class="image-modal hidden" style="z-index: 2000;">
+        <div class="glass-card"
+            style="width: 90%; max-width: 400px; padding: 24px; display: flex; flex-direction: column;">
+            <h2 style="margin-bottom: 16px;" id="admin-user-modal-name">إدارة العضو</h2>
+            <div style="margin-bottom: 16px;">
+                <label style="display:block; margin-bottom: 8px; font-weight: bold;">منح وسام للعضو:</label>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;" id="admin-badge-options">
+                    <button class="btn btn-icon badge-option" data-badge="🌟"
+                        style="font-size: 1.5rem; width: 48px; height: 48px;">🌟</button>
+                    <button class="btn btn-icon badge-option" data-badge="🔥"
+                        style="font-size: 1.5rem; width: 48px; height: 48px;">🔥</button>
+                    <button class="btn btn-icon badge-option" data-badge="👑"
+                        style="font-size: 1.5rem; width: 48px; height: 48px;">👑</button>
+                    <button class="btn btn-icon badge-option" data-badge="🤝"
+                        style="font-size: 1.5rem; width: 48px; height: 48px;">🤝</button>
+                    <button class="btn btn-icon badge-option" data-badge="💡"
+                        style="font-size: 1.5rem; width: 48px; height: 48px;">💡</button>
+                    <button class="btn btn-icon badge-option" data-badge="🏃"
+                        style="font-size: 1.5rem; width: 48px; height: 48px;">🏃</button>
+                    <button class="btn btn-icon badge-option" data-badge="none"
+                        style="font-size: 1rem; width: 48px; height: 48px; background: var(--md-sys-color-error); color: white;"
+                        title="إزالة الوسام"><span class="material-symbols-rounded">close</span></button>
+                </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end;">
+                <button id="admin-user-modal-close" class="btn btn-secondary">إغلاق</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Scripts -->
     <script type="module" src="js/firebase-config.js"></script>

@@ -26,6 +26,9 @@ function initAdmin() {
     listenToTasks();
     listenToSchedule();
     listenToPoints();
+    listenToAdminGallery();
+    listenToTrivia();
+    listenToAdminMemories();
     // listenToAdminChat(); // Disabled to reduce database reads
 }
 
@@ -113,6 +116,8 @@ function renderUsers() {
     unassignedList.innerHTML = '';
     if (adminList) adminList.innerHTML = '';
 
+
+
     // Clear team containers
     Object.keys(teamsCache).forEach(teamId => {
         const container = document.getElementById(`team-members-${teamId}`);
@@ -124,7 +129,9 @@ function renderUsers() {
         chip.className = 'member-chip';
         chip.draggable = true;
         chip.setAttribute('data-user-id', user.id);
-        chip.innerHTML = `<span>${user.name}</span>`;
+        const badgeHTML = user.badge ? `<span style="margin-left:4px; font-size:1.1rem;">${user.badge}</span>` : '';
+        chip.innerHTML = `<span>${user.name}</span>${badgeHTML}`;
+        chip.title = "انقر مرتين لإدارة العضو (الأوسمة)";
 
         // Add drag events
         chip.addEventListener('dragstart', () => {
@@ -132,6 +139,11 @@ function renderUsers() {
         });
         chip.addEventListener('dragend', () => {
             chip.classList.remove('dragging');
+        });
+
+        // Add double click to manage user
+        chip.addEventListener('dblclick', () => {
+            openUserManageModal(user);
         });
 
         if (user.role === 'admin') {
@@ -148,15 +160,10 @@ function renderUsers() {
 }
 
 function setupDropZones() {
-    const dropZones = document.querySelectorAll('.drop-zone');
-
-    dropZones.forEach(zone => {
-        // Remove old listeners to avoid duplicates if called multiple times
-        zone.replaceWith(zone.cloneNode(true));
-    });
-
-    // Re-select after clone
     document.querySelectorAll('.drop-zone').forEach(zone => {
+        if (zone.dataset.hasDropListener) return;
+        zone.dataset.hasDropListener = 'true';
+
         zone.addEventListener('dragover', e => {
             e.preventDefault(); // Necessary to allow dropping
             zone.classList.add('drag-over');
@@ -831,6 +838,261 @@ if (adminNotifForm) {
         } catch (error) {
             console.error("Error sending notification:", error);
             alert("فشل إرسال الإشعار");
+        }
+    });
+}
+
+// ==============================
+// GALLERY MANAGEMENT
+// ==============================
+let adminGalleryUnsubscribe = null;
+let adminCommentsUnsubscribe = null;
+const adminGalleryGrid = document.getElementById('admin-gallery-grid');
+const adminCommentsModal = document.getElementById('admin-comments-modal');
+const adminModalClose = document.getElementById('admin-modal-close');
+const adminCommentsList = document.getElementById('admin-comments-list');
+
+if (adminModalClose) {
+    adminModalClose.addEventListener('click', () => {
+        adminCommentsModal.classList.add('hidden');
+        if (adminCommentsUnsubscribe) {
+            adminCommentsUnsubscribe();
+            adminCommentsUnsubscribe = null;
+        }
+    });
+}
+
+function listenToAdminGallery() {
+    if (!adminGalleryGrid) return;
+    if (adminGalleryUnsubscribe) adminGalleryUnsubscribe();
+
+    const q = query(collection(db, "gallery"), orderBy("createdAt", "desc"));
+
+    adminGalleryUnsubscribe = onSnapshot(q, (snapshot) => {
+        adminGalleryGrid.innerHTML = '';
+        let hasItems = false;
+        
+        snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            
+            hasItems = true;
+
+            const item = document.createElement('div');
+            item.className = 'gallery-item';
+            const previewUrl = `https://drive.google.com/thumbnail?id=${data.driveId}&sz=w800`;
+
+            item.innerHTML = `
+                <img src="${previewUrl}" alt="Camp Photo" style="width: 100%; height: 100%; object-fit: cover;">
+                <div style="position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.7); color:white; padding:6px; font-size:0.75rem; display:flex; flex-direction:column; gap:4px;">
+                    <div style="display:flex; justify-content:center; align-items:center;">
+                        <span style="font-weight:bold;">${data.uploaderName}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; gap:4px; margin-top:4px;">
+                        <button class="btn btn-icon btn-admin-view-comments" data-id="${docSnap.id}" style="color:var(--md-sys-color-primary-container); background:rgba(255,255,255,0.2); width:100%; height:32px; border-radius:8px;">
+                            <span class="material-symbols-rounded" style="font-size:1.1rem;">chat</span>
+                        </button>
+                        <button class="btn btn-icon btn-admin-delete-photo" data-id="${docSnap.id}" style="color:#ff4b4b; background:rgba(255,255,255,0.2); width:100%; height:32px; border-radius:8px;">
+                            <span class="material-symbols-rounded" style="font-size:1.1rem;">delete</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            adminGalleryGrid.appendChild(item);
+        });
+
+        if (!hasItems) {
+            adminGalleryGrid.innerHTML = '<div class="empty-state" style="grid-column: 1 / -1; text-align:center;">لا توجد صور في هذا التصنيف.</div>';
+        }
+
+        // Add listeners for Delete Photo
+        document.querySelectorAll('.btn-admin-delete-photo').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const photoId = e.currentTarget.getAttribute('data-id');
+                if (confirm('هل أنت متأكد من حذف هذه الصورة نهائياً؟')) {
+                    try {
+                        await deleteDoc(doc(db, "gallery", photoId));
+                    } catch (error) {
+                        console.error('Error deleting photo:', error);
+                    }
+                }
+            });
+        });
+
+        // Add listeners for View Comments
+        document.querySelectorAll('.btn-admin-view-comments').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const photoId = e.currentTarget.getAttribute('data-id');
+                openAdminCommentsModal(photoId);
+            });
+        });
+    });
+}
+
+function openAdminCommentsModal(photoId) {
+    adminCommentsModal.classList.remove('hidden');
+    if (adminCommentsUnsubscribe) adminCommentsUnsubscribe();
+    
+    const q = query(collection(db, `gallery/${photoId}/comments`), orderBy("createdAt", "asc"));
+    
+    adminCommentsUnsubscribe = onSnapshot(q, (snapshot) => {
+        adminCommentsList.innerHTML = '';
+        
+        if (snapshot.empty) {
+            adminCommentsList.innerHTML = '<div style="text-align:center; opacity:0.6; padding: 20px;">لا توجد تعليقات على هذه الصورة.</div>';
+            return;
+        }
+        
+        snapshot.forEach((docSnap) => {
+            const comment = docSnap.data();
+            const div = document.createElement('div');
+            div.className = 'comment-item';
+            div.style.display = 'flex';
+            div.style.justifyContent = 'space-between';
+            div.style.alignItems = 'center';
+            div.style.gap = '8px';
+            div.style.background = 'rgba(255,255,255,0.7)';
+            
+            div.innerHTML = `
+                <div style="flex:1;">
+                    <div class="comment-header">
+                        <strong>${comment.userName}</strong>
+                        <span>${new Date(comment.createdAt).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'})}</span>
+                    </div>
+                    <div>${comment.text}</div>
+                </div>
+                <button class="btn btn-icon btn-admin-delete-comment" data-photo-id="${photoId}" data-comment-id="${docSnap.id}" style="color:#ff4b4b; background:rgba(255,255,255,0.4); flex-shrink:0;">
+                    <span class="material-symbols-rounded">delete</span>
+                </button>
+            `;
+            adminCommentsList.appendChild(div);
+        });
+
+        document.querySelectorAll('.btn-admin-delete-comment').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                if (confirm('حذف التعليق؟')) {
+                    const pId = e.currentTarget.getAttribute('data-photo-id');
+                    const cId = e.currentTarget.getAttribute('data-comment-id');
+                    try {
+                        await deleteDoc(doc(db, `gallery/${pId}/comments`, cId));
+                    } catch (err) {
+                        console.error('Error deleting comment:', err);
+                    }
+                }
+            });
+        });
+        
+        adminCommentsList.scrollTop = adminCommentsList.scrollHeight;
+    });
+}
+
+// ==============================
+// USER MANAGE MODAL (BADGES)
+// ==============================
+const adminUserModal = document.getElementById('admin-user-modal');
+const adminUserModalClose = document.getElementById('admin-user-modal-close');
+const adminUserModalName = document.getElementById('admin-user-modal-name');
+let currentManagingUserId = null;
+
+if (adminUserModalClose) {
+    adminUserModalClose.addEventListener('click', () => {
+        adminUserModal.classList.add('hidden');
+        currentManagingUserId = null;
+    });
+}
+
+function openUserManageModal(user) {
+    if (!adminUserModal) return;
+    currentManagingUserId = user.id;
+    adminUserModalName.textContent = `إدارة: ${user.name}`;
+    adminUserModal.classList.remove('hidden');
+}
+
+document.querySelectorAll('.badge-option').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+        if (!currentManagingUserId) return;
+        const badge = e.currentTarget.getAttribute('data-badge');
+        try {
+            await updateDoc(doc(db, "users", currentManagingUserId), {
+                badge: badge === 'none' ? null : badge
+            });
+            adminUserModal.classList.add('hidden');
+        } catch (err) {
+            console.error('Error updating badge:', err);
+            alert('فشل تحديث الوسام.');
+        }
+    });
+});
+
+// ==============================
+// TRIVIA MANAGEMENT
+// ==============================
+const adminTriviaForm = document.getElementById('admin-trivia-form');
+const activeTriviaStatus = document.getElementById('active-trivia-status');
+const btnCloseTrivia = document.getElementById('btn-close-trivia');
+
+function listenToTrivia() {
+    onSnapshot(doc(db, "trivia", "active"), (docSnap) => {
+        if (docSnap.exists() && docSnap.data().isActive) {
+            const data = docSnap.data();
+            if (activeTriviaStatus) {
+                activeTriviaStatus.innerHTML = `
+                    <div style="color: var(--md-sys-color-primary);">السؤال النشط: ${data.question}</div>
+                    <div style="font-size: 0.9rem; color: var(--md-sys-color-secondary);">النقاط: ${data.points}</div>
+                    ${data.winnerTeamId ? `<div style="color: var(--md-sys-color-error); margin-top:8px;">تم الإجابة عليه من فرقة: ${teamsCache[data.winnerTeamId]?.name || data.winnerTeamId}</div>` : ''}
+                `;
+            }
+            if (btnCloseTrivia) btnCloseTrivia.classList.remove('hidden');
+        } else {
+            if (activeTriviaStatus) {
+                activeTriviaStatus.innerHTML = `<span style="color: var(--md-sys-color-secondary);">لا يوجد سؤال نشط حالياً.</span>`;
+            }
+            if (btnCloseTrivia) btnCloseTrivia.classList.add('hidden');
+        }
+    });
+}
+
+if (adminTriviaForm) {
+    adminTriviaForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const q = document.getElementById('trivia-q').value.trim();
+        const opts = [
+            document.getElementById('trivia-opt1').value.trim(),
+            document.getElementById('trivia-opt2').value.trim(),
+            document.getElementById('trivia-opt3').value.trim(),
+            document.getElementById('trivia-opt4').value.trim(),
+        ];
+        const correct = parseInt(document.getElementById('trivia-correct').value);
+        const points = parseInt(document.getElementById('trivia-points').value);
+
+        try {
+            await setDoc(doc(db, "trivia", "active"), {
+                question: q,
+                options: opts,
+                correctIndex: correct,
+                points: points,
+                isActive: true,
+                winnerTeamId: null,
+                createdAt: new Date().toISOString()
+            });
+            alert('تم نشر السؤال بنجاح!');
+            adminTriviaForm.reset();
+        } catch (error) {
+            console.error(error);
+            alert('فشل نشر السؤال');
+        }
+    });
+}
+
+if (btnCloseTrivia) {
+    btnCloseTrivia.addEventListener('click', async () => {
+        try {
+            await updateDoc(doc(db, "trivia", "active"), {
+                isActive: false
+            });
+            alert('تم إغلاق السؤال');
+        } catch (error) {
+            console.error(error);
         }
     });
 }

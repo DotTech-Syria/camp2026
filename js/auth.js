@@ -1,5 +1,5 @@
 import { auth, db, googleProvider } from './firebase-config.js';
-import { signInWithPopup, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // DOM Elements
@@ -11,6 +11,9 @@ const adminDashboard = document.getElementById('admin-dashboard');
 const googleLoginBtn = document.getElementById('google-login-btn');
 const adminGoogleLoginBtn = document.getElementById('admin-google-login-btn');
 const emailLoginForm = document.getElementById('email-login-form');
+const emailRegisterForm = document.getElementById('email-register-form');
+const showRegisterLink = document.getElementById('show-register-link');
+const showLoginLink = document.getElementById('show-login-link');
 const logoutBtn = document.getElementById('logout-btn');
 const adminLogoutBtn = document.getElementById('admin-logout-btn');
 
@@ -18,6 +21,7 @@ const adminLogoutBtn = document.getElementById('admin-logout-btn');
 export let currentUser = null;
 export let userRole = null; // 'member' or 'admin'
 export let userTeam = null;
+export let userBadge = null;
 export let currentUserName = '';
 
 // Determine if we are on the admin page
@@ -47,6 +51,7 @@ async function fetchUserData(user) {
             const data = userSnap.data();
             userRole = data.role || 'member';
             userTeam = data.teamId || null;
+            userBadge = data.badge || null;
             currentUserName = data.name || user.displayName || user.email.split('@')[0];
             
             handleNavigationByRole();
@@ -122,7 +127,9 @@ function updateUserProfileUI() {
     const teamEl = document.getElementById('user-team');
     const picEl = document.getElementById('user-profile-pic');
 
-    if (nameEl) nameEl.textContent = currentUserName;
+    if (nameEl) {
+        nameEl.innerHTML = currentUserName + (userBadge ? ` <span style="font-size:1.1rem; margin-right:4px;">${userBadge}</span>` : '');
+    }
     if (picEl && currentUser.photoURL) picEl.src = currentUser.photoURL;
     
     // Team name will be updated by app.js after fetching teams
@@ -157,6 +164,58 @@ if (emailLoginForm) {
             console.error("Email Login Error:", error);
             alert("فشل تسجيل الدخول. تأكد من البريد وكلمة المرور.");
         });
+    });
+}
+
+if (showRegisterLink && showLoginLink) {
+    showRegisterLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        emailLoginForm.classList.add('hidden');
+        emailRegisterForm.classList.remove('hidden');
+    });
+
+    showLoginLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        emailRegisterForm.classList.add('hidden');
+        emailLoginForm.classList.remove('hidden');
+    });
+}
+
+if (emailRegisterForm) {
+    emailRegisterForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('register-name').value.trim();
+        const email = document.getElementById('register-email').value;
+        const password = document.getElementById('register-password').value;
+        
+        try {
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            await updateProfile(userCredential.user, { displayName: name });
+            
+            const userRef = doc(db, 'users', userCredential.user.uid);
+            await setDoc(userRef, {
+                name: name,
+                email: email,
+                role: 'member',
+                teamId: null,
+                createdAt: new Date().toISOString()
+            });
+            
+            // Hide the complete profile modal if it accidentally appeared due to the listener race condition
+            const modal = document.getElementById('complete-profile-modal');
+            if (modal) modal.classList.add('hidden');
+            
+            // Re-fetch user data to navigate to the app
+            await fetchUserData(userCredential.user);
+            
+        } catch (error) {
+            console.error("Registration Error:", error);
+            if(error.code === 'auth/email-already-in-use') {
+                alert("هذا البريد الإلكتروني مستخدم بالفعل.");
+            } else {
+                alert("فشل إنشاء الحساب: " + error.message);
+            }
+        }
     });
 }
 
