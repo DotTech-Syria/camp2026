@@ -130,7 +130,21 @@ function renderUsers() {
         chip.draggable = true;
         chip.setAttribute('data-user-id', user.id);
         const badgeHTML = user.badge ? `<span style="margin-left:4px; font-size:1.1rem;">${user.badge}</span>` : '';
-        chip.innerHTML = `<span>${user.name}</span>${badgeHTML}`;
+        const avatarUrl = user.photoURL || (() => {
+            const colors = ['74f8e5', 'cce8e2', 'cde5ff', 'ffdcc0', 'ffb4ab', 'e2e2e2', 'd0e4ff', 'b6e3f4', 'ffd1dc', 'e8e0d5'];
+            const charSum = [...user.name].reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            const chosenColor = colors[charSum % colors.length];
+            return `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(user.name)}&backgroundColor=${chosenColor}`;
+        })();
+        chip.innerHTML = `
+            <div style="display:flex; align-items:center; gap:8px; width:100%; text-align:right;">
+                <img src="${avatarUrl}" alt="Avatar" style="width:32px; height:32px; border-radius:50%; background:var(--md-sys-color-primary-container); flex-shrink:0;">
+                <div style="display:flex; flex-direction:column; align-items:flex-start; flex-grow:1;">
+                    <div><span>${user.name}</span>${badgeHTML}</div>
+                    <small style="font-family:monospace; opacity:0.8; margin-top:2px; background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px; user-select: all;" title="انسخ هذا الكود للعميل">${user.id}</small>
+                </div>
+            </div>
+        `;
         chip.title = "انقر مرتين لإدارة العضو (الأوسمة)";
 
         // Add drag events

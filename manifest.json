@@ -1,7 +1,7 @@
 {
-  "name": "St. Michael Camp",
-  "short_name": "Our Camp",
-  "description": "St. Michael Summer Camp | 2026",
+  "name": "مخيم مار ميخائيل",
+  "short_name": "المخيم",
+  "description": "التطبيق الرسمي لمخيم مار ميخائيل",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#F2FBFA",

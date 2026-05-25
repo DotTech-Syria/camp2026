@@ -134,8 +134,8 @@ async function handleFileUpload(event) {
                         url: result.url,
                         driveId: result.id,
                         uploadedBy: currentUser.uid,
-                        uploaderName: currentUser.displayName || currentUser.email.split('@')[0],
-                        uploaderPic: currentUser.photoURL || 'https://via.placeholder.com/40',
+                        uploaderName: currentUser.name || 'عضو المخيم',
+                        uploaderPic: `https://api.dicebear.com/7.x/initials/svg?seed=${currentUser.name || 'عضو'}&backgroundColor=005048&textColor=ffffff`,
                         likes: [],
                         createdAt: new Date().toISOString()
                     });
@@ -308,8 +308,8 @@ async function handleAddComment(e) {
         await addDoc(collection(db, `gallery/${currentViewedPhotoId}/comments`), {
             text: text,
             userId: currentUser.uid,
-            userName: currentUser.displayName || currentUser.email.split('@')[0],
-            userPic: currentUser.photoURL || 'https://via.placeholder.com/40',
+            userName: currentUser.name || 'عضو المخيم',
+            userPic: `https://api.dicebear.com/7.x/initials/svg?seed=${currentUser.name || 'عضو'}&backgroundColor=005048&textColor=ffffff`,
             createdAt: new Date().toISOString()
         });
     } catch (error) {

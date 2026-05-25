@@ -10,11 +10,13 @@
     <meta name="theme-color" content="#006A60">
 
     <!-- Google Fonts: Material Symbols & Roboto/Cairo for Arabic -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
         href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap"
         rel="stylesheet">
     <link
-        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block"
         rel="stylesheet" />
 
     <!-- CSS -->
@@ -34,52 +36,33 @@
             <p>أهلاً بك في المخيم</p>
         </div>
 
-        <div class="login-actions">
-            <button id="google-login-btn" class="btn btn-primary btn-large">
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google Logo"
-                    class="btn-icon">
-                تسجيل الدخول باستخدام Google
-            </button>
-            <div class="divider"><span>أو</span></div>
-            <form id="email-login-form">
+            <form id="new-user-form">
                 <div class="input-group">
-                    <span class="material-symbols-rounded">mail</span>
-                    <input type="email" id="login-email" placeholder="البريد الإلكتروني" required>
+                    <span class="material-symbols-rounded">person</span>
+                    <input type="text" id="register-first-name" placeholder="الاسم الأول" required>
                 </div>
                 <div class="input-group">
-                    <span class="material-symbols-rounded">lock</span>
-                    <input type="password" id="login-password" placeholder="كلمة المرور" required>
+                    <span class="material-symbols-rounded">badge</span>
+                    <input type="text" id="register-last-name" placeholder="الكنية" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-large">دخول لأول مرة</button>
+                <div style="margin-top: 16px;">
+                    <a href="#" id="show-login-link"
+                        style="color: var(--md-sys-color-primary); font-weight: bold; text-decoration: none; font-size: 0.9rem;">لديك كود مسبقاً؟ تسجيل الدخول</a>
+                </div>
+            </form>
+
+            <form id="returning-user-form" class="hidden">
+                <div class="input-group">
+                    <span class="material-symbols-rounded">vpn_key</span>
+                    <input type="text" id="login-custom-id" placeholder="أدخل الكود التعريفي (ID)" required style="text-transform: uppercase;">
                 </div>
                 <button type="submit" class="btn btn-secondary btn-large">دخول</button>
                 <div style="margin-top: 16px;">
                     <a href="#" id="show-register-link"
-                        style="color: var(--md-sys-color-primary); font-weight: bold; text-decoration: none; font-size: 0.9rem;">ليس
-                        لديك حساب؟ إنشاء حساب جديد</a>
+                        style="color: var(--md-sys-color-primary); font-weight: bold; text-decoration: none; font-size: 0.9rem;">مشترك جديد؟ سجل اسمك</a>
                 </div>
             </form>
-
-            <form id="email-register-form" class="hidden">
-                <div class="input-group">
-                    <span class="material-symbols-rounded">person</span>
-                    <input type="text" id="register-name" placeholder="الاسم الكامل (سيظهر للجميع)" required>
-                </div>
-                <div class="input-group">
-                    <span class="material-symbols-rounded">mail</span>
-                    <input type="email" id="register-email" placeholder="البريد الإلكتروني" required>
-                </div>
-                <div class="input-group">
-                    <span class="material-symbols-rounded">lock</span>
-                    <input type="password" id="register-password" placeholder="كلمة المرور (6 أحرف على الأقل)" required
-                        minlength="6">
-                </div>
-                <button type="submit" class="btn btn-secondary btn-large">إنشاء حساب</button>
-                <div style="margin-top: 16px;">
-                    <a href="#" id="show-login-link"
-                        style="color: var(--md-sys-color-primary); font-weight: bold; text-decoration: none; font-size: 0.9rem;">لديك
-                        حساب بالفعل؟ تسجيل الدخول</a>
-                </div>
-            </form>
-        </div>
     </section>
 
     <!-- Main App UI (Hidden until authenticated) -->
@@ -345,22 +328,20 @@
         </div>
     </div>
 
-    <!-- Complete Profile Modal -->
-    <div id="complete-profile-modal" class="image-modal hidden" style="z-index: 3000;">
-        <div class="glass-card" style="width: 90%; max-width: 400px; padding: 24px; text-align: center;">
-            <h2 style="margin-bottom: 8px;">أهلاً بك في المخيم!</h2>
-            <p style="margin-bottom: 24px; font-size: 0.9rem; opacity: 0.8;">يرجى إكمال بياناتك للمتابعة</p>
-            <form id="complete-profile-form" style="display: flex; flex-direction: column; gap: 16px;">
-                <div class="input-group">
-                    <span class="material-symbols-rounded">person</span>
-                    <input type="text" id="profile-first-name" placeholder="الاسم الأول" required>
-                </div>
-                <div class="input-group">
-                    <span class="material-symbols-rounded">badge</span>
-                    <input type="text" id="profile-last-name" placeholder="الكنية" required>
-                </div>
-                <button type="submit" class="btn btn-primary w-100" id="btn-save-profile">حفظ ومتابعة</button>
-            </form>
+    <!-- Complete Profile Modal (Not needed anymore, but keeping structure for ID display) -->
+    <div id="id-display-modal" class="image-modal hidden" style="z-index: 3000;">
+        <div class="glass-card" style="width: 90%; max-width: 400px; padding: 32px; text-align: center;">
+            <div style="background: var(--md-sys-color-primary-container); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                <span class="material-symbols-rounded" style="font-size: 40px; color: var(--md-sys-color-on-primary-container);">verified</span>
+            </div>
+            <h2 style="margin-bottom: 8px;">تم التسجيل بنجاح!</h2>
+            <p style="margin-bottom: 24px; font-size: 0.95rem; opacity: 0.9;">
+                هذا هو الكود التعريفي الخاص بك. يرجى <strong>حفظه أو التقاط صورة للشاشة</strong> للتمكن من الدخول لاحقاً:
+            </p>
+            <div style="background: rgba(0,0,0,0.1); padding: 16px; border-radius: 12px; margin-bottom: 24px;">
+                <span id="display-custom-id" style="font-size: 2rem; font-weight: bold; letter-spacing: 4px; font-family: monospace; color: var(--md-sys-color-primary);"></span>
+            </div>
+            <button id="btn-close-id-modal" class="btn btn-primary w-100">فهمت، متابعة للتطبيق</button>
         </div>
     </div>
 
