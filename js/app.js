@@ -55,7 +55,7 @@ allNavItems.forEach(item => {
         // Remove active class from all main bottom navs
         navItems.forEach(nav => nav.classList.remove('active'));
         if (btnMoreMenu) btnMoreMenu.classList.remove('active');
-        
+
         contentSections.forEach(section => section.classList.add('hidden'));
         contentSections.forEach(section => section.classList.remove('active'));
 
@@ -101,7 +101,7 @@ window.addEventListener('authReady', () => {
                 });
             }
         });
-        
+
         try {
             onMessage(messaging, (payload) => {
                 new Notification(payload.notification.title, {
@@ -109,7 +109,7 @@ window.addEventListener('authReady', () => {
                     icon: './assets/img/logo.png'
                 });
             });
-        } catch(e) {}
+        } catch (e) { }
     }
 });
 
@@ -498,33 +498,43 @@ if (pointsLogCloseBtn) {
 
 function openPointsLogModal(teamId, teamName) {
     if (!pointsLogModal) return;
-    
+
     pointsLogTeamName.textContent = `سجل علامات: ${teamName}`;
     pointsLogModal.classList.remove('hidden');
     pointsLogTbody.innerHTML = '';
     pointsLogEmpty.classList.add('hidden');
-    
+
     if (pointsLogUnsubscribe) pointsLogUnsubscribe();
-    
-    const q = query(collection(db, "points_log"), where("teamId", "==", teamId), orderBy("createdAt", "desc"));
-    
+
+    const q = query(collection(db, "points_log"), where("teamId", "==", teamId));
+
     pointsLogUnsubscribe = onSnapshot(q, (snapshot) => {
         pointsLogTbody.innerHTML = '';
         if (snapshot.empty) {
             pointsLogEmpty.classList.remove('hidden');
             return;
         }
-        
+
         pointsLogEmpty.classList.add('hidden');
-        
+
+        // Sort client-side
+        const logs = [];
         snapshot.forEach((docSnap) => {
-            const data = docSnap.data();
+            logs.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        logs.sort((a, b) => {
+            const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return timeB - timeA;
+        });
+
+        logs.forEach((data) => {
             const tr = document.createElement('tr');
-            
+
             const date = new Date(data.createdAt).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
             const amountColor = data.amount > 0 ? 'var(--md-sys-color-primary)' : 'var(--md-sys-color-error)';
             const amountSign = data.amount > 0 ? '+' : '';
-            
+
             tr.innerHTML = `
                 <td style="color: ${amountColor}; font-weight: bold; padding: 12px; border-bottom: 1px solid var(--glass-border);" dir="ltr">${amountSign}${data.amount}</td>
                 <td style="padding: 12px; border-bottom: 1px solid var(--glass-border);">${data.reason}</td>
@@ -551,39 +561,39 @@ let currentTriviaData = null;
 function listenToTrivia() {
     onSnapshot(doc(db, "trivia", "active"), async (docSnap) => {
         if (!docSnap.exists() || !docSnap.data().isActive) {
-            if(triviaEmptyState) triviaEmptyState.classList.remove('hidden');
-            if(triviaActiveState) triviaActiveState.classList.add('hidden');
-            if(triviaSolvedState) triviaSolvedState.classList.add('hidden');
+            if (triviaEmptyState) triviaEmptyState.classList.remove('hidden');
+            if (triviaActiveState) triviaActiveState.classList.add('hidden');
+            if (triviaSolvedState) triviaSolvedState.classList.add('hidden');
             return;
         }
 
         const data = docSnap.data();
         currentTriviaData = data;
-        
+
         if (data.winnerTeamId) {
             // Already solved
-            if(triviaEmptyState) triviaEmptyState.classList.add('hidden');
-            if(triviaActiveState) triviaActiveState.classList.add('hidden');
-            if(triviaSolvedState) triviaSolvedState.classList.remove('hidden');
-            
+            if (triviaEmptyState) triviaEmptyState.classList.add('hidden');
+            if (triviaActiveState) triviaActiveState.classList.add('hidden');
+            if (triviaSolvedState) triviaSolvedState.classList.remove('hidden');
+
             let wName = 'فرقة غير معروفة';
             if (data.winnerTeamId) {
                 const ts = await getDoc(doc(db, 'teams', data.winnerTeamId));
                 if (ts.exists()) wName = ts.data().name;
             }
-            if(triviaWinnerText) triviaWinnerText.textContent = `فازت بها ${wName} (+${data.points} نقطة)`;
+            if (triviaWinnerText) triviaWinnerText.textContent = `فازت بها ${wName} (+${data.points} نقطة)`;
             return;
         }
 
         // Active and not solved
-        if(triviaEmptyState) triviaEmptyState.classList.add('hidden');
-        if(triviaActiveState) triviaActiveState.classList.remove('hidden');
-        if(triviaSolvedState) triviaSolvedState.classList.add('hidden');
+        if (triviaEmptyState) triviaEmptyState.classList.add('hidden');
+        if (triviaActiveState) triviaActiveState.classList.remove('hidden');
+        if (triviaSolvedState) triviaSolvedState.classList.add('hidden');
 
-        if(triviaQuestion) triviaQuestion.textContent = data.question;
-        if(triviaPointsDisplay) triviaPointsDisplay.textContent = `النقاط: ${data.points}`;
-        
-        if(triviaOptions) {
+        if (triviaQuestion) triviaQuestion.textContent = data.question;
+        if (triviaPointsDisplay) triviaPointsDisplay.textContent = `النقاط: ${data.points}`;
+
+        if (triviaOptions) {
             triviaOptions.innerHTML = '';
             data.options.forEach((opt, idx) => {
                 const btn = document.createElement('button');
@@ -603,23 +613,23 @@ async function submitTriviaAnswer(selectedIndex) {
         alert("يجب أن تكون ضمن فرقة للإجابة!");
         return;
     }
-    
+
     if (selectedIndex === currentTriviaData.correctIndex) {
         try {
             // Try to claim the win
             await updateDoc(doc(db, "trivia", "active"), {
                 winnerTeamId: userTeam
             });
-            
+
             // Add points to team
             const teamRef = doc(db, 'teams', userTeam);
             const ts = await getDoc(teamRef);
-            if(ts.exists()){
+            if (ts.exists()) {
                 await updateDoc(teamRef, {
                     totalScore: (ts.data().totalScore || 0) + currentTriviaData.points
                 });
             }
-            
+
             // Log points
             await addDoc(collection(db, "points_log"), {
                 teamId: userTeam,
@@ -627,9 +637,9 @@ async function submitTriviaAnswer(selectedIndex) {
                 reason: `الفوز بمسابقة: ${currentTriviaData.question}`,
                 createdAt: new Date().toISOString()
             });
-            
+
             alert('إجابة صحيحة! مبروك لفرقتك 🎉');
-        } catch(err) {
+        } catch (err) {
             console.error(err);
             alert("حدث خطأ أثناء تسجيل إجابتك، ربما سبقك فريق آخر!");
         }
@@ -662,13 +672,14 @@ if (tabMyMemories && tabWriteMemory) {
         tabMyMemories.className = 'btn btn-secondary';
         writeMemoryContainer.classList.remove('hidden');
         myMemoriesContainer.classList.add('hidden');
-        if(memoryUsersCache.length === 0) fetchMemoryUsers();
+        if (memoryUsersCache.length === 0) fetchMemoryUsers();
     });
 }
 
 function listenToMemories() {
     if (!currentUser) return;
-    const q = query(collection(db, "memories"), where("toUserId", "==", currentUser.uid), orderBy("createdAt", "desc"));
+    // Query without orderBy to avoid requiring a Firestore composite index
+    const q = query(collection(db, "memories"), where("toUserId", "==", currentUser.uid));
     onSnapshot(q, (snapshot) => {
         const list = document.getElementById('my-memories-list');
         if (!list) return;
@@ -677,8 +688,19 @@ function listenToMemories() {
             list.innerHTML = '<div class="empty-state">لم يكتب لك أحد بعد. بادر أنت بالكتابة لأصدقائك!</div>';
             return;
         }
+
+        // Convert to array and sort client-side by createdAt descending
+        const memories = [];
         snapshot.forEach(docSnap => {
-            const data = docSnap.data();
+            memories.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        memories.sort((a, b) => {
+            const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return timeB - timeA; // Descending (newest first)
+        });
+
+        memories.forEach(data => {
             const div = document.createElement('div');
             div.className = 'glass-card';
             div.style.padding = '16px';
@@ -700,12 +722,12 @@ async function fetchMemoryUsers() {
         const snap = await getDocs(q);
         memoryUsersCache = [];
         snap.forEach(d => {
-            if(d.id !== currentUser.uid) { // Don't show myself
+            if (d.id !== currentUser.uid) { // Don't show myself
                 memoryUsersCache.push({ id: d.id, ...d.data() });
             }
         });
         renderMemoryUsers(memoryUsersCache);
-    } catch(e) {
+    } catch (e) {
         console.error(e);
         list.innerHTML = 'خطأ في تحميل المشتركين';
     }
@@ -752,8 +774,8 @@ const btnSubmitMemory = document.getElementById('btn-submit-memory');
 if (btnSubmitMemory) {
     btnSubmitMemory.addEventListener('click', async () => {
         const text = document.getElementById('memory-text').value.trim();
-        if(!text) return;
-        
+        if (!text) return;
+
         btnSubmitMemory.disabled = true;
         try {
             await addDoc(collection(db, "memories"), {
@@ -765,7 +787,7 @@ if (btnSubmitMemory) {
             });
             alert('تم إرسال الذكرى بنجاح! 💌');
             document.getElementById('write-memory-modal').classList.add('hidden');
-        } catch(e) {
+        } catch (e) {
             console.error(e);
             alert('حدث خطأ');
         }
