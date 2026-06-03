@@ -800,11 +800,54 @@ h2 {
     border-color: var(--glass-border);
 }
 
-[data-theme="dark"] select.input-group option {
+[data-theme="dark"] select option {
     background: var(--md-sys-color-background);
     color: var(--md-sys-color-on-background);
 }
 
 [data-theme="dark"] .data-table th {
     background: rgba(25, 28, 27, 0.5);
+}
+
+/* Header Navigation Active Override */
+.nav-item-header {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.nav-item-header.active {
+    display: inline-flex !important;
+    background: transparent !important;
+    color: inherit !important;
+}
+
+/* Spinner & Animations */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+.spinner {
+    display: inline-block;
+    animation: spin 1s linear infinite;
+}
+
+/* Bible Section Theme Adaptation */
+#bible-verses-container {
+    background: rgba(255, 255, 255, 0.4);
+    color: var(--md-sys-color-on-background);
+}
+
+[data-theme="dark"] #bible-verses-container {
+    background: rgba(0, 0, 0, 0.4) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme="dark"] .bible-reading-info {
+    background: rgba(0, 106, 96, 0.2) !important;
+}
+
+.bible-verse-item {
+    color: var(--md-sys-color-on-background);
 }

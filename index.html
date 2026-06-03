@@ -36,33 +36,36 @@
             <p>أهلاً بك في المخيم</p>
         </div>
 
-            <form id="new-user-form">
-                <div class="input-group">
-                    <span class="material-symbols-rounded">person</span>
-                    <input type="text" id="register-first-name" placeholder="الاسم الأول" required>
-                </div>
-                <div class="input-group">
-                    <span class="material-symbols-rounded">badge</span>
-                    <input type="text" id="register-last-name" placeholder="الكنية" required>
-                </div>
-                <button type="submit" class="btn btn-primary btn-large">دخول لأول مرة</button>
-                <div style="margin-top: 16px;">
-                    <a href="#" id="show-login-link"
-                        style="color: var(--md-sys-color-primary); font-weight: bold; text-decoration: none; font-size: 0.9rem;">لديك كود مسبقاً؟ تسجيل الدخول</a>
-                </div>
-            </form>
+        <form id="new-user-form" class="hidden">
+            <div class="input-group">
+                <span class="material-symbols-rounded">person</span>
+                <input type="text" id="register-first-name" placeholder="الاسم الأول" required>
+            </div>
+            <div class="input-group">
+                <span class="material-symbols-rounded">badge</span>
+                <input type="text" id="register-last-name" placeholder="الكنية" required>
+            </div>
+            <button type="submit" class="btn btn-secondary btn-large">دخول لأول مرة</button>
+            <div style="margin-top: 16px;">
+                <a href="#" id="show-login-link"
+                    style="color: var(--md-sys-color-primary); font-weight: bold; text-decoration: none; font-size: 0.9rem;">لديك
+                    كود مسبقاً؟ تسجيل الدخول</a>
+            </div>
+        </form>
 
-            <form id="returning-user-form" class="hidden">
-                <div class="input-group">
-                    <span class="material-symbols-rounded">vpn_key</span>
-                    <input type="text" id="login-custom-id" placeholder="أدخل الكود التعريفي (ID)" required style="text-transform: uppercase;">
-                </div>
-                <button type="submit" class="btn btn-secondary btn-large">دخول</button>
-                <div style="margin-top: 16px;">
-                    <a href="#" id="show-register-link"
-                        style="color: var(--md-sys-color-primary); font-weight: bold; text-decoration: none; font-size: 0.9rem;">مشترك جديد؟ سجل اسمك</a>
-                </div>
-            </form>
+        <form id="returning-user-form">
+            <div class="input-group">
+                <span class="material-symbols-rounded">vpn_key</span>
+                <input type="text" id="login-custom-id" placeholder="أدخل الكود التعريفي (ID)" required
+                    style="text-transform: uppercase;">
+            </div>
+            <button type="submit" class="btn btn-primary btn-large">دخول</button>
+            <div style="margin-top: 16px;">
+                <a href="#" id="show-register-link"
+                    style="color: var(--md-sys-color-primary); font-weight: bold; text-decoration: none; font-size: 0.9rem;">مشترك
+                    جديد؟ سجل اسمك</a>
+            </div>
+        </form>
     </section>
 
     <!-- Main App UI (Hidden until authenticated) -->
@@ -77,11 +80,11 @@
                 </div>
             </div>
             <div style="display: flex; gap: 8px; align-items: center;">
+                <button class="btn btn-icon nav-item-header" data-target="leaderboard-section" title="جدول العلامات">
+                    <span class="material-symbols-rounded">leaderboard</span>
+                </button>
                 <button id="theme-toggle-btn" class="btn btn-icon" title="تبديل المظهر">
                     <span class="material-symbols-rounded" id="theme-icon">dark_mode</span>
-                </button>
-                <button id="logout-btn" class="btn btn-icon" title="تسجيل الخروج">
-                    <span class="material-symbols-rounded">logout</span>
                 </button>
             </div>
         </header>
@@ -220,6 +223,32 @@
                     </div>
                 </div>
             </section>
+
+            <!-- News Section -->
+            <section id="news-section" class="content-section glass-card hidden">
+                <h2><span class="material-symbols-rounded">newspaper</span> آخر الأخبار</h2>
+                <p style="color: var(--md-sys-color-secondary); margin-bottom: 20px; text-align: center;">
+                    تابع آخر أخبار ونشاطات المخيم وتفاعل معها!
+                </p>
+                <div id="news-list" style="display: flex; flex-direction: column; gap: 20px;">
+                    <!-- News posts will be injected here -->
+                </div>
+            </section>
+
+            <!-- Bible Section -->
+            <section id="bible-section" class="content-section glass-card hidden">
+                <h2><span class="material-symbols-rounded">menu_book</span> الكتاب المقدس</h2>
+                <div class="bible-reading-info" style="display:flex; justify-content:space-between; align-items:center; background: rgba(0, 106, 96, 0.1); padding: 12px 16px; border-radius: 12px; margin-bottom: 20px;">
+                    <div>
+                        <h3 id="bible-active-reference" style="margin: 0; font-size: 1.2rem;">تحديد القراءة...</h3>
+                        <p id="bible-active-title" style="margin: 4px 0 0 0; font-size: 0.9rem; opacity: 0.8;"></p>
+                    </div>
+                    <span class="badge" style="background: var(--md-sys-color-primary); color: white;">قراءة اليوم</span>
+                </div>
+                <div id="bible-verses-container" style="display:flex; flex-direction:column; gap:12px; max-height:60vh; overflow-y:auto; padding: 8px; background: rgba(255, 255, 255, 0.4); border-radius: 12px; border: 1px solid var(--glass-border);">
+                    <!-- Verses will be loaded here -->
+                </div>
+            </section>
         </div>
 
         <!-- Bottom Navigation -->
@@ -232,9 +261,9 @@
                 <span class="material-symbols-rounded">task_alt</span>
                 <span>المهام</span>
             </button>
-            <button class="nav-item" data-target="leaderboard-section">
-                <span class="material-symbols-rounded">leaderboard</span>
-                <span>العلامات</span>
+            <button class="nav-item" data-target="news-section">
+                <span class="material-symbols-rounded">newspaper</span>
+                <span>الأخبار</span>
             </button>
             <button class="nav-item" id="btn-more-menu">
                 <span class="material-symbols-rounded">grid_view</span>
@@ -314,15 +343,25 @@
                     <span class="material-symbols-rounded" style="font-size: 32px;">book</span>
                     <span style="font-weight: bold;">الذكريات</span>
                 </button>
-                <button class="btn btn-secondary nav-item-more hidden" id="more-chat-btn" data-target="chat-section"
+                <button class="btn btn-secondary nav-item-more" data-target="bible-section"
                     style="padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; border-radius: 16px;">
+                    <span class="material-symbols-rounded" style="font-size: 32px;">menu_book</span>
+                    <span style="font-weight: bold;">الكتاب المقدس</span>
+                </button>
+                <button class="btn btn-secondary nav-item-more hidden" id="more-chat-btn" data-target="chat-section"
+                    style="padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; border-radius: 16px; grid-column: span 2;">
                     <span class="material-symbols-rounded" style="font-size: 32px;">chat</span>
                     <span style="font-weight: bold;">الدردشة</span>
                 </button>
                 <button class="btn hidden" id="install-btn"
-                    style="padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; border-radius: 16px; background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%); color: #1a1a1a; border: 1px solid #b8cce4; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                    style="padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; border-radius: 16px; background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%); color: #1a1a1a; border: 1px solid #b8cce4; box-shadow: 0 4px 15px rgba(0,0,0,0.1); grid-column: span 2;">
                     <span class="material-symbols-rounded" style="font-size: 32px;">download</span>
                     <span style="font-weight: bold;">تثبيت التطبيق</span>
+                </button>
+                <button class="btn btn-danger" id="logout-btn"
+                    style="padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; border-radius: 16px; grid-column: span 2; background: rgba(186, 26, 26, 0.1); color: var(--md-sys-color-error); border: 1px solid rgba(186, 26, 26, 0.3);">
+                    <span class="material-symbols-rounded" style="font-size: 32px;">logout</span>
+                    <span style="font-weight: bold;">تسجيل الخروج</span>
                 </button>
             </div>
         </div>
@@ -331,15 +370,19 @@
     <!-- Complete Profile Modal (Not needed anymore, but keeping structure for ID display) -->
     <div id="id-display-modal" class="image-modal hidden" style="z-index: 3000;">
         <div class="glass-card" style="width: 90%; max-width: 400px; padding: 32px; text-align: center;">
-            <div style="background: var(--md-sys-color-primary-container); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
-                <span class="material-symbols-rounded" style="font-size: 40px; color: var(--md-sys-color-on-primary-container);">verified</span>
+            <div
+                style="background: var(--md-sys-color-primary-container); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                <span class="material-symbols-rounded"
+                    style="font-size: 40px; color: var(--md-sys-color-on-primary-container);">verified</span>
             </div>
             <h2 style="margin-bottom: 8px;">تم التسجيل بنجاح!</h2>
             <p style="margin-bottom: 24px; font-size: 0.95rem; opacity: 0.9;">
-                هذا هو الكود التعريفي الخاص بك. يرجى <strong>حفظه أو التقاط صورة للشاشة</strong> للتمكن من الدخول لاحقاً:
+                هذا هو الكود التعريفي الخاص بك. يرجى <strong>حفظه أو التقاط صورة للشاشة</strong> للتمكن من الدخول
+                لاحقاً:
             </p>
             <div style="background: rgba(0,0,0,0.1); padding: 16px; border-radius: 12px; margin-bottom: 24px;">
-                <span id="display-custom-id" style="font-size: 2rem; font-weight: bold; letter-spacing: 4px; font-family: monospace; color: var(--md-sys-color-primary);"></span>
+                <span id="display-custom-id"
+                    style="font-size: 2rem; font-weight: bold; letter-spacing: 4px; font-family: monospace; color: var(--md-sys-color-primary);"></span>
             </div>
             <button id="btn-close-id-modal" class="btn btn-primary w-100">فهمت، متابعة للتطبيق</button>
         </div>
@@ -390,10 +433,9 @@
     </div>
 
     <!-- Scripts -->
-    <script type="module" src="js/firebase-config.js"></script>
-    <script type="module" src="js/auth.js"></script>
-    <script type="module" src="js/app.js"></script>
-    <script type="module" src="js/gallery.js"></script>
+    <script type="module" src="js/auth.js?v=1.1"></script>
+    <script type="module" src="js/app.js?v=1.1"></script>
+    <script type="module" src="js/gallery.js?v=1.1"></script>
 </body>
 
 </html>

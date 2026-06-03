@@ -75,13 +75,17 @@
                 <button class="nav-item" data-target="admin-chat" style="display: none;">
                     <span class="material-symbols-rounded">forum</span> مراقبة المحادثات
                 </button>
-                <button class="nav-item" data-target="admin-notifications">
-                    <span class="material-symbols-rounded">campaign</span>
-                    <span>الإشعارات</span>
+                <button class="nav-item" data-target="admin-news">
+                    <span class="material-symbols-rounded">newspaper</span>
+                    <span>أحدث الأخبار</span>
                 </button>
                 <button class="nav-item" data-target="admin-trivia">
                     <span class="material-symbols-rounded">quiz</span>
                     <span>المسابقات</span>
+                </button>
+                <button class="nav-item" data-target="admin-bible">
+                    <span class="material-symbols-rounded">menu_book</span>
+                    <span>تحديد قراءة الإنجيل</span>
                 </button>
             </nav>
             <div class="sidebar-footer">
@@ -232,7 +236,6 @@
                     <h2>إعدادات النظام</h2>
                 </div>
                 <div class="settings-form">
-                    <!-- Configure Firebase, Drive API, etc. internally if needed, or clear data -->
                     <button class="btn btn-danger" id="btn-reset-leaderboard">تصفير العلامات</button>
                 </div>
             </section>
@@ -268,25 +271,44 @@
                 </form>
             </section>
 
-            <!-- Global Notifications Section -->
-            <section id="admin-notifications" class="admin-section hidden glass-card">
+            <!-- Admin News Section -->
+            <section id="admin-news" class="admin-section hidden glass-card">
                 <div class="section-header">
-                    <h2>إرسال إشعار عام</h2>
+                    <h2>إدارة أحدث الأخبار 📰</h2>
                 </div>
-                <div style="max-width: 600px; padding: 16px; background: rgba(255,255,255,0.5); border-radius: 16px;">
-                    <p style="margin-bottom: 16px; color: var(--md-sys-color-secondary);">سيظهر هذا الإشعار على أجهزة
-                        جميع الأعضاء مباشرة في حال توافق متصفحاتهم مع الإشعارات.</p>
-
-                    <form id="admin-notif-form" style="display: flex; flex-direction: column; gap: 16px;">
-                        <input type="text" id="notif-title" class="input-group"
-                            placeholder="عنوان الإشعار (مثال: إعلان هام!)" required
-                            style="padding: 12px; border-radius: 12px; font-family: var(--font-primary);">
-                        <textarea id="notif-body" class="input-group" placeholder="اكتب نص الإشعار هنا..." required
-                            style="padding: 12px; border-radius: 12px; font-family: var(--font-primary); min-height: 120px;"></textarea>
-                        <button type="submit" class="btn btn-primary" style="align-self: flex-start;">
-                            <span class="material-symbols-rounded">send</span> إرسال الإشعار للجميع
+                
+                <div class="glass-card" style="margin-bottom: 24px; padding: 20px;">
+                    <h3>كتابة خبر جديد</h3>
+                    <form id="admin-news-form" style="display: flex; flex-direction: column; gap: 16px; margin-top: 12px;">
+                        <textarea id="news-post-text" placeholder="اكتب محتوى الخبر هنا..." required
+                            style="width: 100%; min-height: 100px; padding: 12px; border-radius: 12px; border: 1px solid var(--glass-border); font-family: var(--font-primary);"></textarea>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <label for="news-post-image" class="btn btn-secondary" style="align-self: flex-start; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                                <span class="material-symbols-rounded">image</span> إرفاق صورة (اختياري)
+                            </label>
+                            <input type="file" id="news-post-image" accept="image/*" style="display: none;">
+                            <div id="news-image-preview-container" class="hidden" style="position: relative; width: 120px; height: 120px; border-radius: 8px; overflow: hidden; margin-top: 8px; border: 1px solid var(--glass-border);">
+                                <img id="news-image-preview" src="" style="width: 100%; height: 100%; object-fit: cover;">
+                                <button type="button" id="btn-remove-news-image" style="position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                                    <span class="material-symbols-rounded" style="font-size: 16px;">close</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="news-upload-status" style="font-size: 0.9rem; font-weight: bold;"></div>
+                        
+                        <button type="submit" class="btn btn-primary" id="btn-submit-news" style="align-self: flex-start; padding: 12px 24px;">
+                            <span class="material-symbols-rounded">publish</span> نشر الخبر
                         </button>
                     </form>
+                </div>
+
+                <div class="glass-card" style="margin-top: 24px;">
+                    <h3>الأخبار المنشورة</h3>
+                    <div id="admin-news-list" style="display: flex; flex-direction: column; gap: 16px; margin-top: 16px;">
+                        <!-- Admin posts will be listed here -->
+                    </div>
                 </div>
             </section>
 
@@ -339,6 +361,114 @@
                     <div id="active-trivia-status" style="margin-top: 16px; font-weight: bold;">جاري التحميل...</div>
                     <button id="btn-close-trivia" class="btn btn-danger hidden" style="margin-top: 16px;">إغلاق
                         السؤال</button>
+                </div>
+            </section>
+
+            <!-- Admin Bible Section -->
+            <section id="admin-bible" class="admin-section hidden glass-card">
+                <div class="section-header">
+                    <h2>تحديد القراءة اليومية للإنجيل 📖</h2>
+                </div>
+                <div class="glass-card" style="padding: 20px; max-width: 600px;">
+                    <p style="color: var(--md-sys-color-secondary); margin-bottom: 20px;">
+                        حدد السفر والإصحاح والآية التي ترغب أن يقرأها المشتركون اليوم. ستظهر تلقائياً في صفحة الإنجيل لديهم.
+                    </p>
+                    <form id="admin-bible-form" style="display: flex; flex-direction: column; gap: 16px;">
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <label style="font-weight: bold;">اختر السفر:</label>
+                            <select id="admin-bible-book" style="display: block !important; width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--glass-border); background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-family: var(--font-primary); font-weight: bold; cursor: pointer;" required>
+                                <option value="1">سفر التكوين</option>
+                                <option value="2">سفر الخروج</option>
+                                <option value="3">سفر اللاويين</option>
+                                <option value="4">سفر العدد</option>
+                                <option value="5">سفر التثنية</option>
+                                <option value="6">سفر يشوع</option>
+                                <option value="7">سفر القضاة</option>
+                                <option value="8">سفر راعوث</option>
+                                <option value="9">سفر صموئيل الأول</option>
+                                <option value="10">سفر صموئيل الثاني</option>
+                                <option value="11">سفر الملوك الأول</option>
+                                <option value="12">سفر الملوك الثاني</option>
+                                <option value="13">سفر أخبار الأيام الأول</option>
+                                <option value="14">سفر أخبار الأيام الثاني</option>
+                                <option value="15">سفر عزرا</option>
+                                <option value="16">سفر نحميا</option>
+                                <option value="17">سفر طوبيا</option>
+                                <option value="18">سفر يهوديت</option>
+                                <option value="19">سفر أستير</option>
+                                <option value="20">تتمة سفر أستير</option>
+                                <option value="21">سفر أيوب</option>
+                                <option value="22">سفر المزامير</option>
+                                <option value="23">المزمور المائة والحادي والخمسون</option>
+                                <option value="24">سفر الأمثال</option>
+                                <option value="25">سفر الجامعة</option>
+                                <option value="26">سفر نشيد الأنشاد</option>
+                                <option value="27">سفر الحكمة</option>
+                                <option value="28">سفر يشوع بن سيراخ</option>
+                                <option value="29">سفر إشعياء</option>
+                                <option value="30">سفر إرميا</option>
+                                <option value="31">سفر مراثي إرميا</option>
+                                <option value="32">سفر باروخ</option>
+                                <option value="33">سفر حزقيال</option>
+                                <option value="34">سفر دانيال</option>
+                                <option value="35">تتمة سفر دانيال</option>
+                                <option value="36">سفر هوشع</option>
+                                <option value="37">سفر يوئيل</option>
+                                <option value="38">سفر عاموس</option>
+                                <option value="39">سفر عوبديا</option>
+                                <option value="40">سفر يونان</option>
+                                <option value="41">سفر ميخا</option>
+                                <option value="42">سفر ناحوم</option>
+                                <option value="43">سفر حبقوق</option>
+                                <option value="44">سفر صفنيا</option>
+                                <option value="45">سفر حجي</option>
+                                <option value="46">سفر زكريا</option>
+                                <option value="47">سفر ملاخي</option>
+                                <option value="48">سفر المكابيين الأول</option>
+                                <option value="49">سفر المكابيين الثاني</option>
+                                <option value="50">إنجيل متى</option>
+                                <option value="51">إنجيل مرقس</option>
+                                <option value="52">إنجيل لوقا</option>
+                                <option value="53">إنجيل يوحنا</option>
+                                <option value="54">سفر أعمال الرسل</option>
+                                <option value="55">رسالة بولس الرسول إلى أهل رومية</option>
+                                <option value="56">رسالة بولس الرسول الأولى إلى أهل كورنثوس</option>
+                                <option value="57">رسالة بولس الرسول الثانية إلى أهل كورنثوس</option>
+                                <option value="58">رسالة بولس الرسول إلى أهل غلاطية</option>
+                                <option value="59">رسالة بولس الرسول إلى أهل أفسس</option>
+                                <option value="60">رسالة بولس الرسول إلى أهل فيلبي</option>
+                                <option value="61">رسالة بولس الرسول إلى أهل كولوسي</option>
+                                <option value="62">رسالة بولس الرسول الأولى إلى أهل تسالونيكي</option>
+                                <option value="63">رسالة بولس الرسول الثانية إلى أهل تسالونيكي</option>
+                                <option value="64">رسالة بولس الرسول الأولى إلى تيموثاوس</option>
+                                <option value="65">رسالة بولس الرسول الثانية إلى تيموثاوس</option>
+                                <option value="66">رسالة بولس الرسول إلى تيطس</option>
+                                <option value="67">رسالة بولس الرسول إلى فليمون</option>
+                                <option value="68">رسالة بولس الرسول إلى العبرانيين</option>
+                                <option value="69">رسالة يعقوب</option>
+                                <option value="70">رسالة بطرس الرسول الأولى</option>
+                                <option value="71">رسالة بطرس الرسول الثانية</option>
+                                <option value="72">رسالة يوحنا الرسول الأولى</option>
+                                <option value="73">رسالة يوحنا الرسول الثانية</option>
+                                <option value="74">رسالة يوحنا الرسول الثالثة</option>
+                                <option value="75">رسالة يهوذا</option>
+                                <option value="76">سفر رؤيا يوحنا اللاهوتي</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; gap: 16px; width: 100%;">
+                            <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+                                <label style="font-weight: bold;">الإصحاح (رقم):</label>
+                                <input type="number" id="admin-bible-chapter" min="1" value="1" required class="input-group" style="padding: 12px; border-radius: 12px; margin-bottom: 0; font-family: var(--font-primary);">
+                            </div>
+                            <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+                                <label style="font-weight: bold;">آية معينة للتركيز (اختياري):</label>
+                                <input type="number" id="admin-bible-verse" min="1" class="input-group" style="padding: 12px; border-radius: 12px; margin-bottom: 0; font-family: var(--font-primary);">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="align-self: flex-start; padding: 12px 24px; margin-top: 8px;">
+                            <span class="material-symbols-rounded">save</span> حفظ وتحديث القراءة
+                        </button>
+                    </form>
                 </div>
             </section>
 
@@ -448,9 +578,8 @@
     </div>
 
     <!-- Scripts -->
-    <script type="module" src="js/firebase-config.js"></script>
-    <script type="module" src="js/auth.js"></script>
-    <script type="module" src="js/admin.js"></script>
+    <script type="module" src="js/auth.js?v=1.1"></script>
+    <script type="module" src="js/admin.js?v=1.1"></script>
 </body>
 
 </html>

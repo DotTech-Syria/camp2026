@@ -1,7 +1,6 @@
-import { db, messaging } from './firebase-config.js';
+import { db } from './firebase-config.js';
 import { userTeam, userRole, userBadge, currentUser, currentUserName } from './auth.js';
-import { collection, query, orderBy, onSnapshot, doc, getDoc, getDocs, where, addDoc, limit, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import { getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-messaging.js";
+import { collection, query, orderBy, onSnapshot, doc, getDoc, getDocs, where, addDoc, limit, updateDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // Theme Logic
 const themeToggleBtn = document.getElementById('theme-toggle-btn');
@@ -48,12 +47,14 @@ if (btnCloseMore && moreMenuModal) {
     });
 }
 
-const allNavItems = [...navItems, ...navItemsMore];
+const navItemsHeader = document.querySelectorAll('.nav-item-header[data-target]');
+const allNavItems = [...navItems, ...navItemsMore, ...navItemsHeader];
 
 allNavItems.forEach(item => {
     item.addEventListener('click', () => {
         // Remove active class from all main bottom navs
         navItems.forEach(nav => nav.classList.remove('active'));
+        navItemsHeader.forEach(nav => nav.classList.remove('active'));
         if (btnMoreMenu) btnMoreMenu.classList.remove('active');
 
         contentSections.forEach(section => section.classList.add('hidden'));
@@ -62,6 +63,9 @@ allNavItems.forEach(item => {
         if (item.classList.contains('nav-item-more')) {
             if (btnMoreMenu) btnMoreMenu.classList.add('active');
             if (moreMenuModal) moreMenuModal.classList.add('hidden');
+        } else if (item.classList.contains('nav-item-header')) {
+            // Header navigation active style (optional)
+            item.classList.add('active');
         } else {
             item.classList.add('active');
         }
@@ -83,9 +87,10 @@ window.addEventListener('authReady', () => {
     listenToTasks();
     listenToLeaderboard();
     // listenToChat(); // Disabled to reduce database reads
-    listenToNotifications();
+    listenToNews();
     listenToTrivia();
     listenToMemories();
+    listenToBible();
 
     // Request Notification Permission
     if ("Notification" in window) {
@@ -440,38 +445,106 @@ chatForm.addEventListener('submit', async (e) => {
 });
 
 // ==============================
-// GLOBAL NOTIFICATIONS
+// LATEST NEWS SYSTEM
 // ==============================
-let isInitialNotifLoad = true;
-let notifUnsubscribe = null;
+let newsUnsubscribe = null;
 
-function listenToNotifications() {
-    if (notifUnsubscribe) notifUnsubscribe();
+function listenToNews() {
+    if (newsUnsubscribe) newsUnsubscribe();
 
-    // Listen only to the very last notification to avoid reading history
-    const q = query(collection(db, "notifications"), orderBy("timestamp", "desc"), limit(1));
+    const newsList = document.getElementById('news-list');
+    if (!newsList) return;
 
-    notifUnsubscribe = onSnapshot(q, (snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-            if (change.type === "added") {
-                if (!isInitialNotifLoad) {
-                    const data = change.doc.data();
+    const q = query(collection(db, "news"), orderBy("createdAt", "desc"));
 
-                    // Show notification
-                    if ("Notification" in window && Notification.permission === "granted") {
-                        new Notification(data.title, {
-                            body: data.body,
-                            icon: './assets/img/logo.png',
-                            requireInteraction: true
+    newsUnsubscribe = onSnapshot(q, (snapshot) => {
+        newsList.innerHTML = '';
+        if (snapshot.empty) {
+            newsList.innerHTML = '<div class="empty-state">لا توجد أخبار منشورة حالياً.</div>';
+            return;
+        }
+
+        snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            const postId = docSnap.id;
+            const postCard = document.createElement('div');
+            postCard.className = 'glass-card';
+            postCard.style.padding = '20px';
+            postCard.style.display = 'flex';
+            postCard.style.flexDirection = 'column';
+            postCard.style.gap = '12px';
+
+            const timeStr = data.createdAt ? new Date(data.createdAt).toLocaleDateString('ar-EG', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            }) : '';
+
+            const loveCount = data.reactions && data.reactions.love ? data.reactions.love.length : 0;
+            const likeCount = data.reactions && data.reactions.like ? data.reactions.like.length : 0;
+            const fireCount = data.reactions && data.reactions.fire ? data.reactions.fire.length : 0;
+
+            const hasLoved = data.reactions && data.reactions.love && data.reactions.love.includes(currentUser.uid);
+            const hasLiked = data.reactions && data.reactions.like && data.reactions.like.includes(currentUser.uid);
+            const hasFired = data.reactions && data.reactions.fire && data.reactions.fire.includes(currentUser.uid);
+
+            const imageHTML = data.driveId ? `
+                <div style="width: 100%; max-height: 300px; border-radius: 12px; overflow: hidden; border: 1px solid var(--glass-border); margin-top: 8px;">
+                    <img src="https://drive.google.com/thumbnail?id=${data.driveId}&sz=w800" alt="News Image" style="width: 100%; height: 100%; object-fit: cover; cursor: pointer;" onclick="window.open('https://drive.google.com/thumbnail?id=${data.driveId}&sz=w2000', '_blank')">
+                </div>
+            ` : '';
+
+            postCard.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 8px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="material-symbols-rounded" style="color: var(--md-sys-color-primary);">campaign</span>
+                        <strong style="color: var(--md-sys-color-primary);">إعلان من الإدارة</strong>
+                    </div>
+                    <span style="font-size: 0.8rem; opacity: 0.7;">${timeStr}</span>
+                </div>
+                <div style="white-space: pre-wrap; font-size: 1.05rem; line-height: 1.6;">${data.text}</div>
+                ${imageHTML}
+                <div style="display: flex; gap: 12px; margin-top: 8px; border-top: 1px solid var(--glass-border); padding-top: 12px;">
+                    <button class="btn btn-reaction ${hasLoved ? 'active' : ''}" data-post-id="${postId}" data-type="love" style="padding: 6px 12px; border-radius: 20px; font-size: 0.9rem; display: flex; align-items: center; gap: 6px; border: 1px solid var(--glass-border); background: ${hasLoved ? 'rgba(255, 75, 75, 0.15)' : 'transparent'}; color: ${hasLoved ? '#ff4b4b' : 'inherit'}; cursor: pointer;">
+                        <span>❤️</span> <span class="reaction-count">${loveCount}</span>
+                    </button>
+                    <button class="btn btn-reaction ${hasLiked ? 'active' : ''}" data-post-id="${postId}" data-type="like" style="padding: 6px 12px; border-radius: 20px; font-size: 0.9rem; display: flex; align-items: center; gap: 6px; border: 1px solid var(--glass-border); background: ${hasLiked ? 'rgba(74, 99, 95, 0.15)' : 'transparent'}; color: ${hasLiked ? 'var(--md-sys-color-primary)' : 'inherit'}; cursor: pointer;">
+                        <span>👍</span> <span class="reaction-count">${likeCount}</span>
+                    </button>
+                    <button class="btn btn-reaction ${hasFired ? 'active' : ''}" data-post-id="${postId}" data-type="fire" style="padding: 6px 12px; border-radius: 20px; font-size: 0.9rem; display: flex; align-items: center; gap: 6px; border: 1px solid var(--glass-border); background: ${hasFired ? 'rgba(255, 165, 0, 0.15)' : 'transparent'}; color: ${hasFired ? '#ffa500' : 'inherit'}; cursor: pointer;">
+                        <span>🔥</span> <span class="reaction-count">${fireCount}</span>
+                    </button>
+                </div>
+            `;
+
+            newsList.appendChild(postCard);
+        });
+
+        newsList.querySelectorAll('.btn-reaction').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const postId = btn.getAttribute('data-post-id');
+                const type = btn.getAttribute('data-type');
+                const isActive = btn.classList.contains('active');
+                
+                const postRef = doc(db, "news", postId);
+                const updatePath = `reactions.${type}`;
+
+                try {
+                    if (isActive) {
+                        await updateDoc(postRef, {
+                            [updatePath]: arrayRemove(currentUser.uid)
                         });
                     } else {
-                        // Fallback alert
-                        alert(`📢 ${data.title}\n\n${data.body}`);
+                        await updateDoc(postRef, {
+                            [updatePath]: arrayUnion(currentUser.uid)
+                        });
                     }
+                } catch (error) {
+                    console.error("Error toggling reaction:", error);
                 }
-            }
+            });
         });
-        isInitialNotifLoad = false;
     });
 }
 
@@ -843,4 +916,181 @@ window.addEventListener('appinstalled', (evt) => {
 // Explicitly check if app is already running in standalone mode (installed)
 if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
     if (installBtn) installBtn.classList.add('hidden');
+}
+
+// ==============================
+// BIBLE SECTION RENDERING
+// ==============================
+function listenToBible() {
+    const referenceEl = document.getElementById('bible-active-reference');
+    const titleEl = document.getElementById('bible-active-title');
+    const container = document.getElementById('bible-verses-container');
+
+    if (!container) return;
+
+    let currentBook = null;
+    let currentChapter = null;
+    let currentVerse = null;
+
+    onSnapshot(doc(db, "settings", "campState"), async (docSnap) => {
+        if (!docSnap.exists()) {
+            container.innerHTML = '<div class="empty-state">لم يتم تحديد قراءة الإنجيل لليوم بعد.</div>';
+            return;
+        }
+
+        const data = docSnap.data();
+        const book = data.bibleBook;
+        const chapter = data.bibleChapter;
+        const verse = data.bibleVerse;
+
+        if (!book || !chapter) {
+            container.innerHTML = '<div class="empty-state">لم يتم تحديد قراءة الإنجيل لليوم بعد.</div>';
+            if (referenceEl) referenceEl.textContent = 'تحديد القراءة...';
+            if (titleEl) titleEl.textContent = '';
+            return;
+        }
+
+        // Avoid re-fetching if same book and chapter
+        if (currentBook === book && currentChapter === chapter) {
+            currentVerse = verse;
+            highlightAndScrollVerse(container, currentVerse);
+            return;
+        }
+
+        currentBook = book;
+        currentChapter = chapter;
+        currentVerse = verse;
+
+        try {
+            const targetUrl = `https://arabic-bible.onrender.com/api?book=${book}&ch=${chapter}`;
+            console.log("listenToBible: Fetching daily reading...", targetUrl);
+            
+            let bibleData = null;
+            let fetchError = null;
+
+            // 1. Try CorsProxy.io (Fast, Raw Proxy)
+            try {
+                console.log("listenToBible: Trying CorsProxy.io...");
+                const response = await fetch(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`);
+                if (response.ok) {
+                    bibleData = await response.json();
+                    console.log("listenToBible: Successfully fetched via CorsProxy.io.");
+                }
+            } catch (err) {
+                console.warn("listenToBible: CorsProxy.io failed, trying AllOrigins...", err);
+                fetchError = err;
+            }
+
+            // 2. Try AllOrigins Proxy (JSON Wrapper fallback)
+            if (!bibleData) {
+                try {
+                    console.log("listenToBible: Trying AllOrigins proxy...");
+                    const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`);
+                    if (response.ok) {
+                        const wrapper = await response.json();
+                        if (wrapper && wrapper.contents) {
+                            bibleData = JSON.parse(wrapper.contents);
+                            console.log("listenToBible: Successfully fetched via AllOrigins.");
+                        }
+                    }
+                } catch (err) {
+                    console.warn("listenToBible: AllOrigins proxy failed, trying CodeTabs...", err);
+                    fetchError = err;
+                }
+            }
+
+            // 3. Try CodeTabs Proxy (Raw fallback)
+            if (!bibleData) {
+                try {
+                    console.log("listenToBible: Trying CodeTabs proxy...");
+                    const response = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`);
+                    if (response.ok) {
+                        bibleData = await response.json();
+                        console.log("listenToBible: Successfully fetched via CodeTabs.");
+                    }
+                } catch (err) {
+                    console.warn("listenToBible: CodeTabs proxy failed, trying direct fetch...", err);
+                    fetchError = err;
+                }
+            }
+
+            // 3. Try Direct Fetch (in case CORS is suddenly enabled or running in dev mode with relaxed security)
+            if (!bibleData) {
+                try {
+                    console.log("listenToBible: Trying direct fetch...");
+                    const response = await fetch(targetUrl);
+                    if (response.ok) {
+                        bibleData = await response.json();
+                        console.log("listenToBible: Successfully fetched directly.");
+                    }
+                } catch (err) {
+                    console.error("listenToBible: Direct fetch failed too.", err);
+                    fetchError = err;
+                }
+            }
+
+            if (!bibleData || !bibleData.arr) {
+                throw bibleData ? new Error("Invalid data format") : (fetchError || new Error("Failed to fetch from all sources"));
+            }
+
+            if (referenceEl) referenceEl.textContent = `${bibleData.bookName || 'إنجيل'} ${chapter}`;
+            if (titleEl) titleEl.textContent = bibleData.title || '';
+
+            container.innerHTML = '';
+            bibleData.arr.forEach((verseText, index) => {
+                const verseNum = index + 1;
+                const verseItem = document.createElement('div');
+                verseItem.className = 'bible-verse-item';
+                verseItem.setAttribute('data-verse', verseNum);
+                verseItem.style.padding = '8px 12px';
+                verseItem.style.borderRadius = '8px';
+                verseItem.style.transition = 'background 0.3s, border-right 0.3s';
+                verseItem.style.display = 'flex';
+                verseItem.style.gap = '12px';
+                verseItem.style.alignItems = 'flex-start';
+                verseItem.style.lineHeight = '1.7';
+                verseItem.style.fontSize = '1.05rem';
+
+                verseItem.innerHTML = `
+                    <span class="verse-text" style="flex: 1;">${verseText}</span>
+                `;
+                container.appendChild(verseItem);
+            });
+
+            highlightAndScrollVerse(container, currentVerse);
+
+        } catch (error) {
+            console.error("Error loading Bible chapter:", error);
+            container.innerHTML = `
+                <div class="empty-state" style="color: var(--md-sys-color-error); display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                    <span class="material-symbols-rounded" style="font-size: 2rem;">error</span>
+                    فشل تحميل القراءة. يرجى التحقق من اتصالك بالإنترنت.
+                </div>
+            `;
+            if (referenceEl) referenceEl.textContent = 'خطأ في التحميل';
+            if (titleEl) titleEl.textContent = '';
+            // Reset cache to allow retry
+            currentBook = null;
+            currentChapter = null;
+        }
+    });
+}
+
+function highlightAndScrollVerse(container, verseNum) {
+    container.querySelectorAll('.bible-verse-item').forEach(item => {
+        item.style.background = '';
+        item.style.borderRight = '';
+    });
+
+    if (!verseNum) return;
+
+    const target = container.querySelector(`[data-verse="${verseNum}"]`);
+    if (target) {
+        target.style.background = 'rgba(0, 106, 96, 0.12)';
+        target.style.borderRight = '4px solid var(--md-sys-color-primary)';
+        
+        setTimeout(() => {
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 150);
+    }
 }

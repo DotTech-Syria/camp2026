@@ -29,6 +29,8 @@ function initAdmin() {
     listenToAdminGallery();
     listenToTrivia();
     listenToAdminMemories();
+    listenToAdminNews();
+    listenToAdminBible();
     // listenToAdminChat(); // Disabled to reduce database reads
 }
 
@@ -565,6 +567,8 @@ onSnapshot(doc(db, "settings", "campState"), (docSnap) => {
     } else {
         activeDayBadge.textContent = `اليوم النشط: غير محدد`;
     }
+}, (error) => {
+    console.warn("Firestore campState global listener error:", error);
 });
 
 btnSetActiveDay.addEventListener('click', async () => {
@@ -829,30 +833,198 @@ if (adminChatForm) {
 }
 
 // ==============================
-// GLOBAL NOTIFICATIONS
+// NEWS MANAGEMENT
 // ==============================
-const adminNotifForm = document.getElementById('admin-notif-form');
-if (adminNotifForm) {
-    adminNotifForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const title = document.getElementById('notif-title').value;
-        const body = document.getElementById('notif-body').value;
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyMuuvP6uQdATv-uLp0nxS1OEvwJZV5RuSUIUWWuu1iN7t-VkE3xHV_CaXACiL-oB4D_w/exec';
 
-        if (!title || !body) return;
+const adminNewsForm = document.getElementById('admin-news-form');
+const newsImageInput = document.getElementById('news-post-image');
+const newsImagePreviewContainer = document.getElementById('news-image-preview-container');
+const newsImagePreview = document.getElementById('news-image-preview');
+const btnRemoveNewsImage = document.getElementById('btn-remove-news-image');
+const newsUploadStatus = document.getElementById('news-upload-status');
+const adminNewsList = document.getElementById('admin-news-list');
+
+let selectedNewsImageBase64 = null;
+let selectedNewsImageName = '';
+
+if (newsImageInput) {
+    newsImageInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 1200;
+                const MAX_HEIGHT = 1200;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                } else {
+                    if (height > MAX_HEIGHT) {
+                        width *= MAX_HEIGHT / height;
+                        height = MAX_HEIGHT;
+                    }
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                selectedNewsImageBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                selectedNewsImageName = `${Date.now()}_news.jpg`;
+                
+                if (newsImagePreview) newsImagePreview.src = selectedNewsImageBase64;
+                if (newsImagePreviewContainer) newsImagePreviewContainer.classList.remove('hidden');
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+if (btnRemoveNewsImage) {
+    btnRemoveNewsImage.addEventListener('click', () => {
+        selectedNewsImageBase64 = null;
+        selectedNewsImageName = '';
+        if (newsImageInput) newsImageInput.value = '';
+        if (newsImagePreview) newsImagePreview.src = '';
+        if (newsImagePreviewContainer) newsImagePreviewContainer.classList.add('hidden');
+    });
+}
+
+if (adminNewsForm) {
+    adminNewsForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const text = document.getElementById('news-post-text').value.trim();
+        if (!text) return;
+
+        const submitBtn = document.getElementById('btn-submit-news');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="material-symbols-rounded">autorenew</span> جاري النشر...';
+        
+        let driveId = null;
+        let imageUrl = null;
 
         try {
-            await addDoc(collection(db, "notifications"), {
-                title: title,
-                body: body,
-                timestamp: new Date().toISOString(),
-                sender: 'الإدارة'
+            if (selectedNewsImageBase64) {
+                if (newsUploadStatus) newsUploadStatus.innerHTML = '<span style="color: var(--md-sys-color-primary);">جاري رفع الصورة...</span>';
+                
+                const response = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        name: selectedNewsImageName,
+                        mimeType: 'image/jpeg',
+                        file: selectedNewsImageBase64
+                    })
+                });
+
+                const result = await response.json();
+                if (result.status === 'success') {
+                    driveId = result.id;
+                    imageUrl = result.url;
+                } else {
+                    throw new Error(result.message);
+                }
+            }
+
+            await addDoc(collection(db, "news"), {
+                text: text,
+                driveId: driveId,
+                url: imageUrl,
+                reactions: {
+                    love: [],
+                    like: [],
+                    fire: []
+                },
+                createdAt: new Date().toISOString()
             });
-            alert('تم إرسال الإشعار للجميع بنجاح! 📢');
-            adminNotifForm.reset();
+
+            alert('تم نشر الخبر بنجاح! 📰');
+            adminNewsForm.reset();
+            if (btnRemoveNewsImage) btnRemoveNewsImage.click();
+            if (newsUploadStatus) newsUploadStatus.innerHTML = '';
         } catch (error) {
-            console.error("Error sending notification:", error);
-            alert("فشل إرسال الإشعار");
+            console.error("News post error:", error);
+            alert('فشل نشر الخبر: ' + error.message);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<span class="material-symbols-rounded">publish</span> نشر الخبر';
         }
+    });
+}
+
+let adminNewsUnsubscribe = null;
+
+function listenToAdminNews() {
+    if (!adminNewsList) return;
+    if (adminNewsUnsubscribe) adminNewsUnsubscribe();
+
+    const q = query(collection(db, "news"), orderBy("createdAt", "desc"));
+
+    adminNewsUnsubscribe = onSnapshot(q, (snapshot) => {
+        adminNewsList.innerHTML = '';
+        if (snapshot.empty) {
+            adminNewsList.innerHTML = '<div class="empty-state">لا توجد أخبار منشورة.</div>';
+            return;
+        }
+
+        snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            const id = docSnap.id;
+            const item = document.createElement('div');
+            item.className = 'glass-card';
+            item.style.padding = '16px';
+            item.style.display = 'flex';
+            item.style.flexDirection = 'column';
+            item.style.gap = '12px';
+
+            const imageHTML = data.driveId ? `
+                <div style="width: 100px; height: 100px; border-radius: 8px; overflow: hidden; border: 1px solid var(--glass-border);">
+                    <img src="https://drive.google.com/thumbnail?id=${data.driveId}&sz=w300" style="width: 100%; height: 100%; object-fit: cover;">
+                </div>
+            ` : '';
+
+            item.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--glass-border); padding-bottom: 8px;">
+                    <div style="font-size: 0.85rem; opacity: 0.7;">
+                        ${new Date(data.createdAt).toLocaleString('ar-EG')}
+                    </div>
+                    <button class="btn btn-icon btn-delete-news" data-id="${id}" style="color: var(--md-sys-color-error);">
+                        <span class="material-symbols-rounded">delete</span>
+                    </button>
+                </div>
+                <div style="display: flex; gap: 16px; align-items: flex-start;">
+                    ${imageHTML}
+                    <div style="flex: 1; white-space: pre-wrap; font-size: 0.95rem;">${data.text}</div>
+                </div>
+            `;
+
+            adminNewsList.appendChild(item);
+        });
+
+        adminNewsList.querySelectorAll('.btn-delete-news').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                if (confirm('هل أنت متأكد من حذف هذا الخبر نهائياً؟')) {
+                    const postId = btn.getAttribute('data-id');
+                    try {
+                        await deleteDoc(doc(db, "news", postId));
+                    } catch (error) {
+                        console.error("Error deleting news post:", error);
+                        alert("فشل حذف الخبر");
+                    }
+                }
+            });
+        });
     });
 }
 
@@ -1110,3 +1282,262 @@ if (btnCloseTrivia) {
         }
     });
 }
+
+// ==============================
+// BIBLE MANAGEMENT
+// ==============================
+let BIBLE_BOOKS = {
+    "1": "تكوين", "2": "خروج", "3": "لاويين", "4": "عدد", "5": "تثنية", "6": "يشوع", "7": "قضاة", "8": "راعوث", "9": "صموئيل أول", "10": "صموئيل ثان", "11": "ملوك أول", "12": "ملوك ثان", "13": "أخبار الأيام أول", "14": "أخبار الأيام ثان", "15": "عزرا", "16": "نحميا", "17": "أستير", "18": "أيوب", "19": "مزامير", "20": "أمثال", "21": "جامعة", "22": "نشيد الأنشاد", "23": "إشعياء", "24": "إرميا", "25": "مراثي إرميا", "26": "حزقيال", "27": "دانيال", "28": "هوشع", "29": "يوئيل", "30": "عاموس", "31": "عوبديا", "32": "يونان", "33": "ميخا", "34": "ناحوم", "35": "حبقوق", "36": "صفنيا", "37": "حجي", "38": "زكريا", "39": "ملاخي",
+    "40": "متى", "41": "مرقس", "42": "لوقا", "43": "يوحنا", "44": "أعمال الرسل", "45": "رومية", "46": "كورنثوس أولى", "47": "كورنثوس ثانية", "48": "غلاطية", "49": "أفسس", "50": "فيلبي", "51": "كولوسي", "52": "تسالونيكي أولى", "53": "تسالونيكي ثانية", "54": "تيموثاوس أولى", "55": "تيموثاوس ثانية", "56": "تيطس", "57": "فليمون", "58": "العبرانيين", "59": "يعقوب", "60": "بطرس أولى", "61": "بطرس ثانية", "62": "يوحنا أولى", "63": "يوحنا ثانية", "64": "يوحنا ثالثة", "65": "يهوذا", "66": "الرؤيا"
+};
+
+async function populateBibleBooks() {
+    console.log("populateBibleBooks: Starting...");
+    const selectEl = document.getElementById('admin-bible-book');
+    console.log("populateBibleBooks: selectEl is", selectEl);
+    if (!selectEl) return;
+    
+    const renderBooks = (booksMap) => {
+        console.log("renderBooks: Rendering", Object.keys(booksMap).length, "books");
+        const currentVal = selectEl.value;
+        selectEl.innerHTML = '';
+        Object.entries(booksMap).forEach(([id, name]) => {
+            const option = document.createElement('option');
+            option.value = id;
+            option.textContent = name;
+            selectEl.appendChild(option);
+        });
+        if (currentVal && selectEl.querySelector(`option[value="${currentVal}"]`)) {
+            selectEl.value = currentVal;
+        }
+    };
+
+    renderBooks(BIBLE_BOOKS);
+
+    try {
+        console.log("populateBibleBooks: Fetching from local book.json...");
+        const response = await fetch('book.json');
+        console.log("populateBibleBooks: Local fetch status is", response.status);
+        if (response.ok) {
+            const data = await response.json();
+            console.log("populateBibleBooks: Local JSON data received", data);
+            if (data && typeof data === 'object') {
+                BIBLE_BOOKS = data;
+                renderBooks(BIBLE_BOOKS);
+            }
+        }
+    } catch (error) {
+        console.warn("Failed to fetch book.json, keeping hardcoded fallback:", error);
+    }
+}
+
+function listenToAdminBible() {
+    console.log("listenToAdminBible: Starting...");
+    populateBibleBooks();
+
+    const form = document.getElementById('admin-bible-form');
+    const bookSelect = document.getElementById('admin-bible-book');
+    const chapterInput = document.getElementById('admin-bible-chapter');
+    const verseInput = document.getElementById('admin-bible-verse');
+
+    console.log("listenToAdminBible: elements - form:", form, "bookSelect:", bookSelect);
+    if (!form) return;
+
+    onSnapshot(doc(db, "settings", "campState"), (docSnap) => {
+        console.log("listenToAdminBible: campState snapshot received");
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            console.log("listenToAdminBible: snapshot data", data);
+            if (data.bibleBook && bookSelect) bookSelect.value = String(data.bibleBook);
+            if (data.bibleChapter && chapterInput) chapterInput.value = data.bibleChapter;
+            if (data.bibleVerse !== undefined && verseInput) verseInput.value = data.bibleVerse || '';
+        }
+    }, (error) => {
+        console.warn("listenToAdminBible: campState snapshot listener failed:", error);
+    });
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+            const bookId = bookSelect ? bookSelect.value : "1";
+            const chapterNum = chapterInput ? (parseInt(chapterInput.value) || 1) : 1;
+            const verseNum = (verseInput && verseInput.value.trim() !== '') ? parseInt(verseInput.value) : null;
+
+            console.log("listenToAdminBible: Form submit", { bookId, chapterNum, verseNum });
+
+            await setDoc(doc(db, "settings", "campState"), {
+                bibleBook: bookId,
+                bibleChapter: chapterNum,
+                bibleVerse: verseNum
+            }, { merge: true });
+            alert("تم تحديث قراءة الإنجيل بنجاح!");
+        } catch (error) {
+            console.error("Error updating bible state:", error);
+            alert("حدث خطأ أثناء حفظ التحديث: " + error.message);
+        }
+    });
+}
+
+// ==============================
+// MEMORIES MANAGEMENT (ADMIN)
+// ==============================
+let adminMemoryUsersCache = [];
+let targetAdminMemoryUserId = null;
+
+function listenToAdminMemories() {
+    console.log("listenToAdminMemories: Starting...");
+    const tabMyMemories = document.getElementById('admin-tab-my-memories');
+    const tabWriteMemory = document.getElementById('admin-tab-write-memory');
+    const myMemoriesContainer = document.getElementById('admin-my-memories-container');
+    const writeMemoryContainer = document.getElementById('admin-write-memory-container');
+
+    if (tabMyMemories && tabWriteMemory) {
+        tabMyMemories.addEventListener('click', () => {
+            tabMyMemories.classList.add('btn-primary');
+            tabMyMemories.classList.remove('btn-secondary');
+            tabWriteMemory.classList.add('btn-secondary');
+            tabWriteMemory.classList.remove('btn-primary');
+            if (myMemoriesContainer) myMemoriesContainer.classList.remove('hidden');
+            if (writeMemoryContainer) writeMemoryContainer.classList.add('hidden');
+        });
+
+        tabWriteMemory.addEventListener('click', () => {
+            tabWriteMemory.classList.add('btn-primary');
+            tabWriteMemory.classList.remove('btn-secondary');
+            tabMyMemories.classList.add('btn-secondary');
+            tabMyMemories.classList.remove('btn-primary');
+            if (writeMemoryContainer) writeMemoryContainer.classList.remove('hidden');
+            if (myMemoriesContainer) myMemoriesContainer.classList.add('hidden');
+            fetchAdminMemoryUsers();
+        });
+    }
+
+    const adminId = localStorage.getItem('camp-user-id');
+    if (adminId) {
+        const q = query(collection(db, "memories"), where("toUserId", "==", adminId));
+        onSnapshot(q, (snapshot) => {
+            const list = document.getElementById('admin-my-memories-list');
+            if (!list) return;
+            list.innerHTML = '';
+            if (snapshot.empty) {
+                list.innerHTML = '<div class="empty-state">لم يكتب لك أحد ذكريات بعد.</div>';
+                return;
+            }
+
+            const memories = [];
+            snapshot.forEach(docSnap => {
+                memories.push({ id: docSnap.id, ...docSnap.data() });
+            });
+            memories.sort((a, b) => {
+                const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                return timeB - timeA;
+            });
+
+            memories.forEach(data => {
+                const div = document.createElement('div');
+                div.className = 'glass-card';
+                div.style.padding = '16px';
+                div.style.marginBottom = '12px';
+                div.innerHTML = `
+                    <div style="font-weight:bold; color:var(--md-sys-color-primary); margin-bottom:8px;">من: ${data.fromUserName}</div>
+                    <div style="white-space: pre-wrap;">${data.text}</div>
+                `;
+                list.appendChild(div);
+            });
+        }, (error) => {
+            console.warn("listenToAdminMemories: snap listener error:", error);
+        });
+    }
+
+    const searchInput = document.getElementById('admin-memory-user-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const filtered = adminMemoryUsersCache.filter(u => u.name.toLowerCase().includes(term));
+            renderAdminMemoryUsers(filtered);
+        });
+    }
+
+    const btnCancel = document.getElementById('admin-btn-cancel-memory');
+    if (btnCancel) {
+        btnCancel.addEventListener('click', () => {
+            const modal = document.getElementById('admin-write-memory-modal');
+            if (modal) modal.classList.add('hidden');
+        });
+    }
+
+    const btnSubmit = document.getElementById('admin-btn-submit-memory');
+    if (btnSubmit) {
+        btnSubmit.addEventListener('click', async () => {
+            const textEl = document.getElementById('admin-memory-text');
+            const text = textEl ? textEl.value.trim() : '';
+            if (!text || !targetAdminMemoryUserId) return;
+
+            btnSubmit.disabled = true;
+            try {
+                const localUser = JSON.parse(localStorage.getItem('camp-user')) || {};
+                const adminName = localUser.name || 'الإدارة';
+
+                await addDoc(collection(db, "memories"), {
+                    fromUserId: adminId,
+                    fromUserName: adminName,
+                    toUserId: targetAdminMemoryUserId,
+                    text: text,
+                    createdAt: new Date().toISOString()
+                });
+                alert('تم إرسال الذكرى بنجاح! 💌');
+                const modal = document.getElementById('admin-write-memory-modal');
+                if (modal) modal.classList.add('hidden');
+            } catch (e) {
+                console.error(e);
+                alert('حدث خطأ أثناء الإرسال');
+            }
+            btnSubmit.disabled = false;
+        });
+    }
+}
+
+async function fetchAdminMemoryUsers() {
+    const list = document.getElementById('admin-memory-users-list');
+    if (!list) return;
+    list.innerHTML = 'جاري التحميل...';
+    try {
+        const q = query(collection(db, "users"));
+        const snap = await getDocs(q);
+        const adminId = localStorage.getItem('camp-user-id');
+        adminMemoryUsersCache = [];
+        snap.forEach(d => {
+            if (d.id !== adminId) {
+                adminMemoryUsersCache.push({ id: d.id, ...d.data() });
+            }
+        });
+        renderAdminMemoryUsers(adminMemoryUsersCache);
+    } catch (e) {
+        console.error(e);
+        list.innerHTML = 'خطأ في تحميل المشتركين';
+    }
+}
+
+function renderAdminMemoryUsers(usersList) {
+    const list = document.getElementById('admin-memory-users-list');
+    if (!list) return;
+    list.innerHTML = '';
+    usersList.forEach(u => {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-secondary';
+        btn.style.padding = '12px';
+        btn.textContent = u.name;
+        btn.onclick = () => {
+            targetAdminMemoryUserId = u.id;
+            const toNameEl = document.getElementById('admin-memory-to-name');
+            const textEl = document.getElementById('admin-memory-text');
+            const modal = document.getElementById('admin-write-memory-modal');
+            if (toNameEl) toNameEl.textContent = u.name;
+            if (textEl) textEl.value = '';
+            if (modal) modal.classList.remove('hidden');
+        };
+        list.appendChild(btn);
+    });
+}
+

@@ -1,8 +1,9 @@
-const CACHE_NAME = 'camp-pwa-cache-v2';
-const DYNAMIC_CACHE_NAME = 'camp-dynamic-cache-v2';
+const CACHE_NAME = 'camp-pwa-cache-v10';
+const DYNAMIC_CACHE_NAME = 'camp-dynamic-cache-v10';
 const urlsToCache = [
   '/',
   '/index.html',
+  '/book.json',
   '/css/style.css',
   '/js/app.js',
   '/js/auth.js',
@@ -35,6 +36,11 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  // Only handle GET requests and http/https schemes
+  if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) {
+    return;
+  }
+
   // If it's an image from Google Drive or our storage, use Cache First then Network
   if (event.request.url.includes('drive.google.com/thumbnail') || event.request.destination === 'image') {
     event.respondWith(
@@ -63,7 +69,7 @@ self.addEventListener('fetch', event => {
           }
           return networkResponse;
         }).catch(() => {
-          // Return cached or offline fallback
+          return cachedResponse || new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
         });
         return cachedResponse || fetchPromise;
       })

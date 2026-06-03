@@ -135,6 +135,22 @@ function updateUserProfileUI() {
             const chosenColor = colors[charSum % colors.length];
             picEl.src = `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(currentUserName)}&backgroundColor=${chosenColor}`;
         }
+        
+        // Show user ID display modal when clicking on profile picture
+        picEl.style.cursor = 'pointer';
+        picEl.title = 'عرض الكود التعريفي (ID) الخاص بي';
+        picEl.onclick = () => {
+            if (currentUser && currentUser.uid) {
+                if (idDisplayModal) {
+                    const titleEl = idDisplayModal.querySelector('h2');
+                    if (titleEl) titleEl.textContent = 'الكود التعريفي الخاص بك';
+                    const descEl = idDisplayModal.querySelector('p');
+                    if (descEl) descEl.innerHTML = 'هذا هو الكود التعريفي (ID) الخاص بحسابك. يمكنك استخدامه لتسجيل الدخول مجدداً في حال مسح ذاكرة التخزين:';
+                    if (displayCustomId) displayCustomId.textContent = currentUser.uid;
+                    idDisplayModal.classList.remove('hidden');
+                }
+            }
+        };
     }
     
     // Team name will be updated by app.js after fetching teams
@@ -185,9 +201,15 @@ if (newUserForm) {
                 createdAt: new Date().toISOString()
             });
 
-            // Show ID Display Modal
-            if (displayCustomId) displayCustomId.textContent = newId;
-            if (idDisplayModal) idDisplayModal.classList.remove('hidden');
+            // Show ID Display Modal with registration specific text
+            if (idDisplayModal) {
+                const titleEl = idDisplayModal.querySelector('h2');
+                if (titleEl) titleEl.textContent = 'تم التسجيل بنجاح!';
+                const descEl = idDisplayModal.querySelector('p');
+                if (descEl) descEl.innerHTML = 'هذا هو الكود التعريفي الخاص بك. يرجى <strong>حفظه أو التقاط صورة للشاشة</strong> للتمكن من الدخول لاحقاً:';
+                if (displayCustomId) displayCustomId.textContent = newId;
+                idDisplayModal.classList.remove('hidden');
+            }
             
             // Log them in behind the scenes
             await fetchUserData(newId);
