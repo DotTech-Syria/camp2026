@@ -930,7 +930,9 @@ function listenToBible() {
 
     let currentBook = null;
     let currentChapter = null;
-    let currentVerse = null;
+    let currentStartVerse = null;
+    let currentEndVerse = null;
+    let currentBookName = '';
 
     onSnapshot(doc(db, "settings", "campState"), async (docSnap) => {
         if (!docSnap.exists()) {
@@ -941,7 +943,8 @@ function listenToBible() {
         const data = docSnap.data();
         const book = data.bibleBook;
         const chapter = data.bibleChapter;
-        const verse = data.bibleVerse;
+        const startVerse = data.bibleStartVerse || data.bibleVerse || null;
+        const endVerse = data.bibleEndVerse || null;
 
         if (!book || !chapter) {
             container.innerHTML = '<div class="empty-state">لم يتم تحديد قراءة الإنجيل لليوم بعد.</div>';
@@ -952,14 +955,27 @@ function listenToBible() {
 
         // Avoid re-fetching if same book and chapter
         if (currentBook === book && currentChapter === chapter) {
-            currentVerse = verse;
-            highlightAndScrollVerse(container, currentVerse);
+            currentStartVerse = startVerse;
+            currentEndVerse = endVerse;
+            if (referenceEl) {
+                let refText = `${currentBookName || 'إنجيل'} ${chapter}`;
+                if (currentStartVerse) {
+                    if (currentEndVerse) {
+                        refText += ` : ${currentStartVerse} - ${currentEndVerse}`;
+                    } else {
+                        refText += ` : ${currentStartVerse}`;
+                    }
+                }
+                referenceEl.textContent = refText;
+            }
+            highlightAndScrollVerse(container, currentStartVerse, currentEndVerse);
             return;
         }
 
         currentBook = book;
         currentChapter = chapter;
-        currentVerse = verse;
+        currentStartVerse = startVerse;
+        currentEndVerse = endVerse;
 
         try {
             const targetUrl = `https://arabic-bible.onrender.com/api?book=${book}&ch=${chapter}`;
@@ -1033,7 +1049,18 @@ function listenToBible() {
                 throw bibleData ? new Error("Invalid data format") : (fetchError || new Error("Failed to fetch from all sources"));
             }
 
-            if (referenceEl) referenceEl.textContent = `${bibleData.bookName || 'إنجيل'} ${chapter}`;
+            currentBookName = bibleData.bookName || 'إنجيل';
+            if (referenceEl) {
+                let refText = `${currentBookName} ${chapter}`;
+                if (currentStartVerse) {
+                    if (currentEndVerse) {
+                        refText += ` : ${currentStartVerse} - ${currentEndVerse}`;
+                    } else {
+                        refText += ` : ${currentStartVerse}`;
+                    }
+                }
+                referenceEl.textContent = refText;
+            }
             if (titleEl) titleEl.textContent = bibleData.title || '';
 
             container.innerHTML = '';
@@ -1057,7 +1084,7 @@ function listenToBible() {
                 container.appendChild(verseItem);
             });
 
-            highlightAndScrollVerse(container, currentVerse);
+            highlightAndScrollVerse(container, currentStartVerse, currentEndVerse);
 
         } catch (error) {
             console.error("Error loading Bible chapter:", error);
@@ -1076,21 +1103,34 @@ function listenToBible() {
     });
 }
 
-function highlightAndScrollVerse(container, verseNum) {
+function highlightAndScrollVerse(container, startVerse, endVerse) {
     container.querySelectorAll('.bible-verse-item').forEach(item => {
         item.style.background = '';
         item.style.borderRight = '';
     });
 
-    if (!verseNum) return;
+    if (!startVerse) return;
 
-    const target = container.querySelector(`[data-verse="${verseNum}"]`);
-    if (target) {
-        target.style.background = 'rgba(0, 106, 96, 0.12)';
-        target.style.borderRight = '4px solid var(--md-sys-color-primary)';
-        
+    if (endVerse) {
+        for (let i = startVerse; i <= endVerse; i++) {
+            const target = container.querySelector(`[data-verse="${i}"]`);
+            if (target) {
+                target.style.background = 'rgba(0, 106, 96, 0.12)';
+                target.style.borderRight = '4px solid var(--md-sys-color-primary)';
+            }
+        }
+    } else {
+        const target = container.querySelector(`[data-verse="${startVerse}"]`);
+        if (target) {
+            target.style.background = 'rgba(0, 106, 96, 0.12)';
+            target.style.borderRight = '4px solid var(--md-sys-color-primary)';
+        }
+    }
+
+    const startTarget = container.querySelector(`[data-verse="${startVerse}"]`);
+    if (startTarget) {
         setTimeout(() => {
-            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            startTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }, 150);
     }
 }

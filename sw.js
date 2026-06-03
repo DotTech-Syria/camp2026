@@ -1,5 +1,5 @@
-const CACHE_NAME = 'camp-pwa-cache-v10';
-const DYNAMIC_CACHE_NAME = 'camp-dynamic-cache-v10';
+const CACHE_NAME = 'camp-pwa-cache-v11';
+const DYNAMIC_CACHE_NAME = 'camp-dynamic-cache-v11';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -53,7 +53,7 @@ self.addEventListener('fetch', event => {
           });
         }).catch(() => {
           // Fallback if offline and no image
-          return new Response(''); 
+          return new Response('');
         });
       })
     );
@@ -63,9 +63,9 @@ self.addEventListener('fetch', event => {
       caches.match(event.request).then(cachedResponse => {
         const fetchPromise = fetch(event.request).then(networkResponse => {
           if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-              caches.open(CACHE_NAME).then(cache => {
-                  cache.put(event.request, networkResponse.clone());
-              });
+            caches.open(CACHE_NAME).then(cache => {
+              cache.put(event.request, networkResponse.clone());
+            });
           }
           return networkResponse;
         }).catch(() => {

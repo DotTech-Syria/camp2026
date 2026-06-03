@@ -1338,7 +1338,8 @@ function listenToAdminBible() {
     const form = document.getElementById('admin-bible-form');
     const bookSelect = document.getElementById('admin-bible-book');
     const chapterInput = document.getElementById('admin-bible-chapter');
-    const verseInput = document.getElementById('admin-bible-verse');
+    const startVerseInput = document.getElementById('admin-bible-start-verse');
+    const endVerseInput = document.getElementById('admin-bible-end-verse');
 
     console.log("listenToAdminBible: elements - form:", form, "bookSelect:", bookSelect);
     if (!form) return;
@@ -1350,7 +1351,12 @@ function listenToAdminBible() {
             console.log("listenToAdminBible: snapshot data", data);
             if (data.bibleBook && bookSelect) bookSelect.value = String(data.bibleBook);
             if (data.bibleChapter && chapterInput) chapterInput.value = data.bibleChapter;
-            if (data.bibleVerse !== undefined && verseInput) verseInput.value = data.bibleVerse || '';
+            if (startVerseInput) {
+                startVerseInput.value = data.bibleStartVerse || data.bibleVerse || '';
+            }
+            if (endVerseInput) {
+                endVerseInput.value = data.bibleEndVerse || '';
+            }
         }
     }, (error) => {
         console.warn("listenToAdminBible: campState snapshot listener failed:", error);
@@ -1361,14 +1367,17 @@ function listenToAdminBible() {
         try {
             const bookId = bookSelect ? bookSelect.value : "1";
             const chapterNum = chapterInput ? (parseInt(chapterInput.value) || 1) : 1;
-            const verseNum = (verseInput && verseInput.value.trim() !== '') ? parseInt(verseInput.value) : null;
+            const startVerseNum = (startVerseInput && startVerseInput.value.trim() !== '') ? parseInt(startVerseInput.value) : null;
+            const endVerseNum = (endVerseInput && endVerseInput.value.trim() !== '') ? parseInt(endVerseInput.value) : null;
 
-            console.log("listenToAdminBible: Form submit", { bookId, chapterNum, verseNum });
+            console.log("listenToAdminBible: Form submit", { bookId, chapterNum, startVerseNum, endVerseNum });
 
             await setDoc(doc(db, "settings", "campState"), {
                 bibleBook: bookId,
                 bibleChapter: chapterNum,
-                bibleVerse: verseNum
+                bibleStartVerse: startVerseNum,
+                bibleEndVerse: endVerseNum,
+                bibleVerse: startVerseNum // For backwards compatibility
             }, { merge: true });
             alert("تم تحديث قراءة الإنجيل بنجاح!");
         } catch (error) {
