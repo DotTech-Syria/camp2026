@@ -831,7 +831,7 @@ if (memoryUserSearch) {
 
 function openMemoryModal(id, name) {
     targetMemoryUserId = id;
-    document.getElementById('memory-to-name').textContent = name;
+    //document.getElementById('memory-to-name').textContent = name;
     document.getElementById('memory-text').value = '';
     document.getElementById('write-memory-modal').classList.remove('hidden');
 }
